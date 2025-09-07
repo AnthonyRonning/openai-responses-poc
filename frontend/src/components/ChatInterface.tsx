@@ -19,6 +19,7 @@ export function ChatInterface({ onOpenSettings }: ChatInterfaceProps) {
     createConversation,
     switchConversation,
     deleteConversation,
+    deleteMessage,
     sendMessage,
     isGenerating,
     cancelGeneration,
@@ -150,7 +151,11 @@ export function ChatInterface({ onOpenSettings }: ChatInterfaceProps) {
           </div>
         ) : (
           <>
-            <MessageList messages={currentSession?.messages || []} isGenerating={isGenerating} />
+            <MessageList
+              messages={currentSession?.messages || []}
+              isGenerating={isGenerating}
+              onDeleteMessage={deleteMessage}
+            />
             <InputArea
               onSendMessage={handleSendMessage}
               isGenerating={isGenerating}

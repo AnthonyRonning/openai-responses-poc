@@ -10,11 +10,13 @@ export interface ConversationContextType {
   createConversation: () => Promise<void>;
   loadConversation: (id: string) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
+  deleteMessage: (messageId: string) => Promise<void>;
   switchConversation: (id: string) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
   clearLogs: () => void;
   isGenerating: boolean;
   cancelGeneration: () => void;
+  generateTitle: (conversationId: string) => Promise<void>;
 }
 
 export const ConversationContext = createContext<ConversationContextType | undefined>(undefined);

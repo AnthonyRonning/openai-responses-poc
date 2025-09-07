@@ -1,16 +1,18 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { Bot, Clock, User } from 'lucide-react';
+import { Bot, Clock, Trash2, User } from 'lucide-react';
 
 import type { Message } from '../types';
 
 interface MessageListProps {
   messages: Message[];
   isGenerating: boolean;
+  onDeleteMessage?: (messageId: string) => void;
 }
 
-export function MessageList({ messages, isGenerating }: MessageListProps) {
+export function MessageList({ messages, isGenerating, onDeleteMessage }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -39,7 +41,9 @@ export function MessageList({ messages, isGenerating }: MessageListProps) {
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`group flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            onMouseEnter={() => setHoveredMessageId(message.id)}
+            onMouseLeave={() => setHoveredMessageId(null)}
           >
             {message.role === 'assistant' && (
               <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
@@ -47,29 +51,45 @@ export function MessageList({ messages, isGenerating }: MessageListProps) {
               </div>
             )}
 
-            <div
-              className={`max-w-[70%] ${
-                message.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'
-              } rounded-lg px-4 py-3`}
-            >
-              <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
-              {message.status === 'streaming' && (
-                <div className="mt-2 flex items-center gap-1">
-                  <div className="w-2 h-2 bg-current rounded-full animate-bounce" />
-                  <div className="w-2 h-2 bg-current rounded-full animate-bounce delay-75" />
-                  <div className="w-2 h-2 bg-current rounded-full animate-bounce delay-150" />
-                </div>
-              )}
-              {message.timestamp > 0 && (
-                <div
-                  className={`mt-2 text-xs flex items-center gap-1 ${
-                    message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
-                  }`}
-                >
-                  <Clock className="w-3 h-3" />
-                  {formatTime(message.timestamp)}
-                </div>
-              )}
+            <div className="relative">
+              <div
+                className={`max-w-[70%] ${
+                  message.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'
+                } rounded-lg px-4 py-3`}
+              >
+                <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
+                {message.status === 'streaming' && (
+                  <div className="mt-2 flex items-center gap-1">
+                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" />
+                    <div className="w-2 h-2 bg-current rounded-full animate-bounce delay-75" />
+                    <div className="w-2 h-2 bg-current rounded-full animate-bounce delay-150" />
+                  </div>
+                )}
+                {message.timestamp > 0 && (
+                  <div
+                    className={`mt-2 text-xs flex items-center gap-1 ${
+                      message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
+                    }`}
+                  >
+                    <Clock className="w-3 h-3" />
+                    {formatTime(message.timestamp)}
+                  </div>
+                )}
+              </div>
+
+              {onDeleteMessage &&
+                hoveredMessageId === message.id &&
+                message.status !== 'streaming' && (
+                  <button
+                    onClick={() => onDeleteMessage(message.id)}
+                    className={`absolute top-2 ${
+                      message.role === 'user' ? '-left-8' : '-right-8'
+                    } p-1 rounded hover:bg-gray-200 transition-colors`}
+                    title="Delete message"
+                  >
+                    <Trash2 className="w-4 h-4 text-gray-500 hover:text-red-500" />
+                  </button>
+                )}
             </div>
 
             {message.role === 'user' && (

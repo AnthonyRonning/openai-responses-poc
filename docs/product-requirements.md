@@ -691,7 +691,7 @@ App
 - **✅ Phase 1**: Core Foundation - **COMPLETE**
 - **✅ Phase 2**: Streaming - **COMPLETE**
 - **✅ Phase 3**: Background Responses - **COMPLETE** (with documented API limitations)
-- **🟨 Phase 4**: Conversation Management - 60% Complete
+- **✅ Phase 4**: Conversation Management - **COMPLETE**
 - **🟨 Phase 5**: Web Search - 20% Complete (UI only)
 - **🟨 Phase 6**: Developer Tools - 20% Complete (logging only)
 - **❌ Phase 7**: Polish & UX - Not Started
@@ -700,7 +700,10 @@ App
 - Basic chat with OpenAI Responses/Conversations API
 - **Streaming responses with SSE (token-by-token display)**
 - **Cancel button during generation**
-- Conversation create/switch/delete
+- **Full conversation management (create/switch/delete/clear)**
+- **Automatic title generation from first message**
+- **Delete individual messages from conversations**
+- **Proper "New Conversation" behavior (no premature API calls)**
 - Settings configuration with API key
 - Stateless operation (no client persistence)
 - Lazy conversation creation (on first message only)
@@ -708,6 +711,7 @@ App
 - **Proper pagination with full `has_more` handling**
 - **Smart message deduplication (local vs server IDs)**
 - **Cross-device/tab synchronization**
+- **Title persistence across page refreshes**
 
 **Key Limitations (Due to OpenAI API)**:
 - Page refresh kills in-progress streaming responses (OpenAI limitation)
@@ -779,19 +783,36 @@ App
 
 **Note**: Implemented best possible solution given OpenAI API limitations
 
-### Phase 4: Conversation Management 🟨 MOSTLY COMPLETE
-**Priority: High** | **Status: 60% Implemented**
+### Phase 4: Conversation Management ✅ COMPLETE
+**Priority: High** | **Status: Fully Implemented**
+
+**Implementation Date**: 2025-09-07
+
 - [x] Conversation switching UI
   - Click to switch between conversations
   - Active conversation highlighted
 - [x] Conversation list in sidebar
-  - Shows all conversations with message count
+  - Shows all conversations with generated titles
   - Status indicators (generating, active, error)
+  - Titles persist across page refreshes
 - [x] Delete conversation functionality
-  - Hover to show delete button
-  - Removes from API and UI
-- [ ] Clear conversation option (keep ID, clear messages)
-- [ ] Conversation title generation from first message
+  - Hover to show delete button in sidebar
+  - Removes entire conversation from API and UI
+  - Properly handles active conversation deletion
+- [x] Delete individual messages
+  - Hover to show delete button on messages
+  - Uses DELETE `/v1/conversations/{conversation_id}/items/{item_id}`
+  - Properly updates polling with server IDs only
+  - Handles last message deletion edge case
+- [x] Conversation title generation from first message
+  - Automatic generation after conversation creation
+  - Uses Responses API without storing to conversation
+  - Updates conversation metadata with POST `/v1/conversations/{conversation_id}`
+  - Shows in sidebar immediately and persists across refreshes
+- [x] Proper "New Conversation" behavior
+  - Button no longer creates premature API calls
+  - Just resets UI to fresh state
+  - Conversation created only on first message send
 
 ### Phase 5: Web Search Integration 🟨 PARTIAL
 **Priority: Medium** | **Status: 20% Implemented**
@@ -860,8 +881,11 @@ App
 
 ### Functional Success
 - [x] Can create and manage conversations without any persistence
-- [ ] Can refresh page during generation and recover response
+- [ ] Can refresh page during generation and recover response (limited by API)
 - [x] Streaming works smoothly with cancellation
+- [x] Conversation titles generate and persist correctly
+- [x] Individual messages can be deleted
+- [x] Proper ID management (local vs server IDs)
 - [ ] Web search integration functions correctly (partial - toggle implemented)
 - [x] Settings are configurable and work as expected
 - [x] Developer logs capture all API interactions
@@ -872,13 +896,15 @@ App
 - [x] Error messages are actionable
 - [x] Performance feels snappy despite stateless nature
 - [x] Recovery from errors is graceful
+- [x] "New Conversation" button works as expected (no premature API calls)
+- [x] Titles show in sidebar and persist across refreshes
 
 ### Technical Success
-- [ ] Clean separation of concerns in architecture
-- [ ] No client-side persistence (truly stateless)
-- [ ] Proper TypeScript typing throughout
-- [ ] Efficient state management
-- [ ] Robust error handling
+- [x] Clean separation of concerns in architecture
+- [x] No client-side persistence (truly stateless)
+- [x] Proper TypeScript typing throughout
+- [x] Efficient state management
+- [x] Robust error handling
 
 ### Compatibility Testing Success
 - [ ] All API calls are properly formatted

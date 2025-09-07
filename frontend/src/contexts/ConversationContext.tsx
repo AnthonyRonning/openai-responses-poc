@@ -30,36 +30,20 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   }, [settings]);
 
   const createConversation = useCallback(async () => {
-    if (!client) {
-      throw new Error('API key not configured');
-    }
+    // Just reset the UI to a fresh state
+    // Don't actually create a conversation until the first message is sent
+    setActiveConversation(undefined);
+    setCurrentSession(undefined);
+    setLastSeenItemId(undefined);
 
-    try {
-      const conversation = await client.createConversation();
-      const newConv: Conversation = {
-        id: conversation.id,
-        createdAt: conversation.created_at * 1000,
-        lastActive: Date.now(),
-        messageCount: 0,
-        status: 'active',
-      };
-
-      setConversations((prev) => [newConv, ...prev]);
-      setActiveConversation(conversation.id);
-      setCurrentSession({
-        conversationId: conversation.id,
-        messages: [],
-      });
-
-      // Update URL with conversation ID
-      const params = new URLSearchParams(window.location.search);
-      params.set('conversation_id', conversation.id);
-      window.history.replaceState({}, '', `${window.location.pathname}?${params}`);
-    } catch (error) {
-      console.error('Failed to create conversation:', error);
-      throw error;
-    }
-  }, [client]);
+    // Clear the URL parameter
+    const params = new URLSearchParams(window.location.search);
+    params.delete('conversation_id');
+    const newUrl = params.toString()
+      ? `${window.location.pathname}?${params}`
+      : window.location.pathname;
+    window.history.replaceState({}, '', newUrl);
+  }, []);
 
   const loadConversationItems = useCallback(
     async (id: string, after?: string) => {
@@ -116,6 +100,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
           lastActive: Date.now(),
           messageCount: messages.length,
           status: 'active',
+          title: conversation.metadata?.title,
         };
 
         setLastSeenItemId(lastId);
@@ -175,6 +160,61 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
     [loadConversation],
   );
 
+  const generateTitle = useCallback(
+    async (conversationId: string, firstUserMessageContent?: string) => {
+      if (!client) return;
+
+      try {
+        // Use provided content or try to find it in current session
+        let messageContent = firstUserMessageContent;
+        if (!messageContent && currentSession) {
+          const firstUserMessage = currentSession.messages.find((msg) => msg.role === 'user');
+          messageContent = firstUserMessage?.content;
+        }
+
+        if (!messageContent) {
+          console.log('No user message found for title generation');
+          return;
+        }
+
+        console.log('Generating title for conversation:', conversationId);
+
+        // Generate a title using the Responses API
+        const response = await client.createResponse({
+          model: settings.api.model,
+          input: [
+            {
+              role: 'system',
+              content:
+                'Generate a very short title (3-5 words max) for this conversation based on the first user message. Respond with ONLY the title, no quotes or extra text.',
+            },
+            {
+              role: 'user',
+              content: messageContent,
+            },
+          ],
+          stream: false,
+          store: false,
+        });
+
+        const responseData = response as { output?: Array<{ content?: Array<{ text?: string }> }> };
+        const title = responseData.output?.[0]?.content?.[0]?.text || 'New Chat';
+        console.log('Generated title:', title);
+
+        // Update conversation metadata with the title
+        await client.updateConversation(conversationId, { title: title.trim() });
+
+        // Update local state
+        setConversations((prev) =>
+          prev.map((c) => (c.id === conversationId ? { ...c, title: title.trim() } : c)),
+        );
+      } catch (error) {
+        console.error('Failed to generate title:', error);
+      }
+    },
+    [client, currentSession, settings.api.model],
+  );
+
   const sendMessage = useCallback(
     async (content: string) => {
       if (!client) {
@@ -209,6 +249,12 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
           const params = new URLSearchParams(window.location.search);
           params.set('conversation_id', conversation.id);
           window.history.replaceState({}, '', `${window.location.pathname}?${params}`);
+
+          // Generate title for new conversation immediately
+          console.log('New conversation created, generating title for:', conversation.id);
+          generateTitle(conversation.id, content).catch((error) => {
+            console.error('Failed to generate title for new conversation:', error);
+          });
         } catch (error) {
           console.error('Failed to create conversation:', error);
           throw error;
@@ -268,8 +314,10 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
         // Check if this is a streaming response
         if (settings.streaming.enabled && response instanceof Response) {
           // Streaming response
+          const localAssistantId = crypto.randomUUID();
+          let serverItemId: string | undefined;
           const assistantMessage: Message = {
-            id: crypto.randomUUID(),
+            id: localAssistantId,
             role: 'assistant',
             content: '',
             timestamp: Date.now(),
@@ -300,17 +348,26 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
               });
             },
             () => {
-              // Mark message as complete
+              // Mark message as complete and update ID if we have server ID
               setCurrentSession((prev) => {
                 if (!prev) return prev;
                 const messages = prev.messages.map((msg, idx) => {
                   if (idx === prev.messages.length - 1 && msg.role === 'assistant') {
-                    return { ...msg, status: 'complete' as const };
+                    return {
+                      ...msg,
+                      id: serverItemId || msg.id,
+                      status: 'complete' as const,
+                    };
                   }
                   return msg;
                 });
                 return { ...prev, messages };
               });
+
+              // Update lastSeenItemId if we got a server ID
+              if (serverItemId) {
+                setLastSeenItemId(serverItemId);
+              }
 
               setConversations((prev) =>
                 prev.map((c) =>
@@ -327,6 +384,12 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
                 prev.map((c) => (c.id === conversationId ? { ...c, status: 'error' } : c)),
               );
               setIsGenerating(false);
+            },
+            (chunk) => {
+              // Extract server item ID from the stream
+              if (chunk.item_id && !serverItemId) {
+                serverItemId = chunk.item_id;
+              }
             },
           );
         } else {
@@ -374,7 +437,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [client, currentSession, settings],
+    [client, currentSession, settings, generateTitle],
   );
 
   const clearLogs = useCallback(() => {
@@ -395,6 +458,62 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
       ),
     );
   }, [activeConversation]);
+
+  const deleteMessage = useCallback(
+    async (messageId: string) => {
+      if (!activeConversation || !currentSession || !client) return;
+
+      try {
+        // Call API to delete the message
+        await client.deleteConversationItem(activeConversation, messageId);
+
+        // Update local state by removing the message
+        setCurrentSession((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            messages: prev.messages.filter((msg) => msg.id !== messageId),
+          };
+        });
+
+        // Update message count
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === activeConversation
+              ? { ...c, messageCount: Math.max(0, c.messageCount - 1) }
+              : c,
+          ),
+        );
+
+        // If we deleted the last message that we were using for polling, update lastSeenItemId
+        if (messageId === lastSeenItemId && currentSession.messages.length > 1) {
+          // Find the second-to-last message ID
+          const remainingMessages = currentSession.messages.filter((msg) => msg.id !== messageId);
+          if (remainingMessages.length > 0) {
+            const newLastId = remainingMessages[remainingMessages.length - 1].id;
+            // Only update if it's a server ID (not a local UUID)
+            // Server IDs typically start with "item_" or similar pattern, while local IDs are UUIDs
+            if (!newLastId.includes('-') || newLastId.startsWith('item_')) {
+              setLastSeenItemId(newLastId);
+            } else {
+              // If it's a local UUID, try to find the last server ID
+              const lastServerMessage = remainingMessages
+                .slice()
+                .reverse()
+                .find((msg) => !msg.id.includes('-') || msg.id.startsWith('item_'));
+              setLastSeenItemId(lastServerMessage?.id);
+            }
+          } else {
+            setLastSeenItemId(undefined);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to delete message:', error);
+        throw error;
+      }
+    },
+    [activeConversation, currentSession, client, lastSeenItemId],
+  );
 
   // Poll for new conversation items
   const pollForNewItems = useCallback(async () => {
@@ -556,11 +675,13 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
         createConversation,
         loadConversation,
         deleteConversation,
+        deleteMessage,
         switchConversation,
         sendMessage,
         clearLogs,
         isGenerating,
         cancelGeneration,
+        generateTitle,
       }}
     >
       {children}

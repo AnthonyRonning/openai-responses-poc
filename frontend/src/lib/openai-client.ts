@@ -5,6 +5,10 @@ import type { AppSettings, LogEntry } from '../types';
 export interface ConversationResponse {
   id: string;
   created_at: number;
+  metadata?: {
+    title?: string;
+    [key: string]: string | undefined;
+  };
 }
 
 export interface ResponseCreateParams {
@@ -175,6 +179,87 @@ export class OpenAIClient {
           timestamp: Date.now(),
           type: 'error',
           method: 'DELETE',
+          url,
+          body: error instanceof Error ? error.message : String(error),
+        });
+      }
+      throw error;
+    }
+  }
+
+  async deleteConversationItem(
+    conversationId: string,
+    itemId: string,
+  ): Promise<ConversationResponse> {
+    const url = `/conversations/${conversationId}/items/${itemId}`;
+    this.logRequest('DELETE', url);
+    const startTime = Date.now();
+
+    try {
+      const response = await fetch(`${this.client.baseURL}${url}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${this.client.apiKey}`,
+        },
+      });
+
+      const data = await response.json();
+      this.logResponse('DELETE', url, response.status, data, Date.now() - startTime);
+
+      if (!response.ok) {
+        throw new Error(data?.error?.message || 'Failed to delete conversation item');
+      }
+
+      return data;
+    } catch (error) {
+      if (this.logger) {
+        this.logger({
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          type: 'error',
+          method: 'DELETE',
+          url,
+          body: error instanceof Error ? error.message : String(error),
+        });
+      }
+      throw error;
+    }
+  }
+
+  async updateConversation(
+    id: string,
+    metadata: Record<string, string>,
+  ): Promise<ConversationResponse> {
+    const url = `/conversations/${id}`;
+    const body = { metadata };
+    this.logRequest('POST', url, body);
+    const startTime = Date.now();
+
+    try {
+      const response = await fetch(`${this.client.baseURL}${url}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.client.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+      this.logResponse('POST', url, response.status, data, Date.now() - startTime);
+
+      if (!response.ok) {
+        throw new Error(data?.error?.message || 'Failed to update conversation');
+      }
+
+      return data;
+    } catch (error) {
+      if (this.logger) {
+        this.logger({
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          type: 'error',
+          method: 'POST',
           url,
           body: error instanceof Error ? error.message : String(error),
         });
