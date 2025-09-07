@@ -1,0 +1,345 @@
+import OpenAI from 'openai';
+
+import type { AppSettings, LogEntry } from '../types';
+
+export interface ConversationResponse {
+  id: string;
+  created_at: number;
+}
+
+export interface ResponseCreateParams {
+  model: string;
+  conversation?: string;
+  input: Array<{ role: string; content: string }>;
+  stream?: boolean;
+  store?: boolean;
+  background?: boolean;
+  tools?: Array<{ type: string }>;
+  previous_response_id?: string;
+}
+
+export interface ConversationItem {
+  id: string;
+  type: 'message' | 'tool_call' | 'tool_output';
+  role?: string;
+  content?: string;
+  created_at: number;
+}
+
+export class OpenAIClient {
+  private client: OpenAI;
+  private logger?: (entry: LogEntry) => void;
+
+  constructor(settings: AppSettings, logger?: (entry: LogEntry) => void) {
+    this.client = new OpenAI({
+      apiKey: settings.api.apiKey,
+      baseURL: settings.api.baseUrl,
+      dangerouslyAllowBrowser: true,
+    });
+    this.logger = logger;
+  }
+
+  private logRequest(method: string, url: string, body?: unknown) {
+    if (this.logger) {
+      this.logger({
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        type: 'request',
+        method,
+        url,
+        body,
+      });
+    }
+  }
+
+  private logResponse(
+    method: string,
+    url: string,
+    status: number,
+    body?: unknown,
+    duration?: number,
+  ) {
+    if (this.logger) {
+      this.logger({
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        type: 'response',
+        method,
+        url,
+        status,
+        body,
+        duration,
+      });
+    }
+  }
+
+  async createConversation(): Promise<ConversationResponse> {
+    const url = '/conversations';
+    this.logRequest('POST', url, {});
+    const startTime = Date.now();
+
+    try {
+      const response = await fetch(`${this.client.baseURL}${url}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.client.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      });
+
+      const data = await response.json();
+      this.logResponse('POST', url, response.status, data, Date.now() - startTime);
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'Failed to create conversation');
+      }
+
+      return data;
+    } catch (error) {
+      if (this.logger) {
+        this.logger({
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          type: 'error',
+          method: 'POST',
+          url,
+          body: error instanceof Error ? error.message : String(error),
+        });
+      }
+      throw error;
+    }
+  }
+
+  async getConversation(id: string): Promise<ConversationResponse> {
+    const url = `/conversations/${id}`;
+    this.logRequest('GET', url);
+    const startTime = Date.now();
+
+    try {
+      const response = await fetch(`${this.client.baseURL}${url}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${this.client.apiKey}`,
+        },
+      });
+
+      const data = await response.json();
+      this.logResponse('GET', url, response.status, data, Date.now() - startTime);
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'Failed to get conversation');
+      }
+
+      return data;
+    } catch (error) {
+      if (this.logger) {
+        this.logger({
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          type: 'error',
+          method: 'GET',
+          url,
+          body: error instanceof Error ? error.message : String(error),
+        });
+      }
+      throw error;
+    }
+  }
+
+  async deleteConversation(id: string): Promise<void> {
+    const url = `/conversations/${id}`;
+    this.logRequest('DELETE', url);
+    const startTime = Date.now();
+
+    try {
+      const response = await fetch(`${this.client.baseURL}${url}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${this.client.apiKey}`,
+        },
+      });
+
+      const data = response.status !== 204 ? await response.json() : null;
+      this.logResponse('DELETE', url, response.status, data, Date.now() - startTime);
+
+      if (!response.ok) {
+        throw new Error(data?.error?.message || 'Failed to delete conversation');
+      }
+    } catch (error) {
+      if (this.logger) {
+        this.logger({
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          type: 'error',
+          method: 'DELETE',
+          url,
+          body: error instanceof Error ? error.message : String(error),
+        });
+      }
+      throw error;
+    }
+  }
+
+  async getConversationItems(id: string): Promise<ConversationItem[]> {
+    const url = `/conversations/${id}/items`;
+    this.logRequest('GET', url);
+    const startTime = Date.now();
+
+    try {
+      const response = await fetch(`${this.client.baseURL}${url}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${this.client.apiKey}`,
+        },
+      });
+
+      const data = await response.json();
+      this.logResponse('GET', url, response.status, data, Date.now() - startTime);
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'Failed to get conversation items');
+      }
+
+      return data.data || [];
+    } catch (error) {
+      if (this.logger) {
+        this.logger({
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          type: 'error',
+          method: 'GET',
+          url,
+          body: error instanceof Error ? error.message : String(error),
+        });
+      }
+      throw error;
+    }
+  }
+
+  async createResponse(params: ResponseCreateParams): Promise<Response | unknown> {
+    const url = '/responses';
+    this.logRequest('POST', url, params);
+    const startTime = Date.now();
+
+    try {
+      if (params.stream) {
+        const response = await fetch(`${this.client.baseURL}${url}`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.client.apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(params),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error?.message || 'Failed to create response');
+        }
+
+        return response;
+      } else {
+        const response = await fetch(`${this.client.baseURL}${url}`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.client.apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(params),
+        });
+
+        const data = await response.json();
+        this.logResponse('POST', url, response.status, data, Date.now() - startTime);
+
+        if (!response.ok) {
+          throw new Error(data.error?.message || 'Failed to create response');
+        }
+
+        return data;
+      }
+    } catch (error) {
+      if (this.logger) {
+        this.logger({
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          type: 'error',
+          method: 'POST',
+          url,
+          body: error instanceof Error ? error.message : String(error),
+        });
+      }
+      throw error;
+    }
+  }
+
+  async getResponse(id: string): Promise<unknown> {
+    const url = `/responses/${id}`;
+    this.logRequest('GET', url);
+    const startTime = Date.now();
+
+    try {
+      const response = await fetch(`${this.client.baseURL}${url}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${this.client.apiKey}`,
+        },
+      });
+
+      const data = await response.json();
+      this.logResponse('GET', url, response.status, data, Date.now() - startTime);
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'Failed to get response');
+      }
+
+      return data;
+    } catch (error) {
+      if (this.logger) {
+        this.logger({
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          type: 'error',
+          method: 'GET',
+          url,
+          body: error instanceof Error ? error.message : String(error),
+        });
+      }
+      throw error;
+    }
+  }
+
+  async cancelResponse(id: string): Promise<void> {
+    const url = `/responses/${id}/cancel`;
+    this.logRequest('POST', url);
+    const startTime = Date.now();
+
+    try {
+      const response = await fetch(`${this.client.baseURL}${url}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.client.apiKey}`,
+        },
+      });
+
+      const data = response.status !== 204 ? await response.json() : null;
+      this.logResponse('POST', url, response.status, data, Date.now() - startTime);
+
+      if (!response.ok) {
+        throw new Error(data?.error?.message || 'Failed to cancel response');
+      }
+    } catch (error) {
+      if (this.logger) {
+        this.logger({
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          type: 'error',
+          method: 'POST',
+          url,
+          body: error instanceof Error ? error.message : String(error),
+        });
+      }
+      throw error;
+    }
+  }
+}

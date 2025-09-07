@@ -635,63 +635,124 @@ App
 
 ## Implementation Phases
 
-### Phase 1: Core Foundation (MVP)
-**Priority: Critical**
-- [ ] Basic React app structure with TypeScript
-- [ ] Settings context and configuration UI
-- [ ] OpenAI client with Conversations API integration
-- [ ] Create and load conversations
-- [ ] Basic message display (no streaming)
-- [ ] Simple request/response without streaming
+### Current Status Summary
+- **✅ Phase 1**: Core Foundation - **COMPLETE**
+- **❌ Phase 2**: Streaming - Not Started
+- **❌ Phase 3**: Background Responses - Not Started  
+- **🟨 Phase 4**: Conversation Management - 60% Complete
+- **🟨 Phase 5**: Web Search - 20% Complete (UI only)
+- **🟨 Phase 6**: Developer Tools - 20% Complete (logging only)
+- **❌ Phase 7**: Polish & UX - Not Started
 
-### Phase 2: Streaming & Real-Time
-**Priority: High**
+**What's Working Now**:
+- Basic chat with OpenAI Responses/Conversations API
+- Non-streaming responses
+- Conversation create/switch/delete
+- Settings configuration with API key
+- Stateless operation (no client persistence)
+- Lazy conversation creation (on first message only)
+
+**Key Limitations**:
+- No streaming (responses appear all at once)
+- Page refresh loses everything (by design, but no recovery yet)
+- Web search toggle exists but doesn't work
+- Logs only visible in browser console
+
+### Phase 1: Core Foundation (MVP) ✅ COMPLETE
+**Priority: Critical** | **Status: Fully Implemented**
+- [x] Basic React app structure with TypeScript
+  - React 19, TypeScript, Vite, Tailwind CSS v4
+  - Removed StrictMode to prevent double network requests
+- [x] Settings context and configuration UI
+  - Full settings modal with API key, base URL, model configuration
+  - Test connection functionality
+  - Settings stored in React context (no persistence)
+- [x] OpenAI client with Conversations API integration
+  - Custom client wrapper in `/src/lib/openai-client.ts`
+  - Full CRUD operations for conversations and responses
+  - Request/response logging capability
+- [x] Create and load conversations
+  - Lazy creation on first message (not on app load)
+  - Load conversation items from API
+- [x] Basic message display (no streaming)
+  - Clean message bubbles with user/assistant distinction
+  - Timestamps and avatars
+  - Welcome message when empty
+- [x] Simple request/response without streaming
+  - Working with actual OpenAI API
+  - Non-streaming responses appear after generation
+
+### Phase 2: Streaming & Real-Time ❌ NOT STARTED
+**Priority: High** | **Status: Not Implemented**
 - [ ] SSE streaming implementation
-- [ ] Streaming message display
+- [ ] Streaming message display (token-by-token)
 - [ ] Cancel/abort functionality
 - [ ] Stream error handling and recovery
 - [ ] Smooth UI updates during streaming
 
-### Phase 3: Background Responses
-**Priority: Critical**
+**Note**: Streaming toggle exists in settings but functionality not implemented
+
+### Phase 3: Background Responses ❌ NOT STARTED
+**Priority: Critical** | **Status: Not Implemented**
 - [ ] Background response initiation
 - [ ] Response ID persistence (URL params)
 - [ ] Page refresh recovery
 - [ ] Re-attachment to active streams
 - [ ] Background response status UI
 
-### Phase 4: Conversation Management
-**Priority: High**
-- [ ] Conversation switching UI
-- [ ] Conversation list in sidebar
-- [ ] Delete conversation functionality
-- [ ] Clear conversation option
-- [ ] Conversation title generation
+**Note**: Critical for stateless operation but not yet implemented
 
-### Phase 5: Web Search Integration
-**Priority: Medium**
-- [ ] Web search tool configuration
-- [ ] Search status indicators
+### Phase 4: Conversation Management 🟨 MOSTLY COMPLETE
+**Priority: High** | **Status: 60% Implemented**
+- [x] Conversation switching UI
+  - Click to switch between conversations
+  - Active conversation highlighted
+- [x] Conversation list in sidebar
+  - Shows all conversations with message count
+  - Status indicators (generating, active, error)
+- [x] Delete conversation functionality
+  - Hover to show delete button
+  - Removes from API and UI
+- [ ] Clear conversation option (keep ID, clear messages)
+- [ ] Conversation title generation from first message
+
+### Phase 5: Web Search Integration 🟨 PARTIAL
+**Priority: Medium** | **Status: 20% Implemented**
+- [x] Web search tool configuration
+  - Toggle in settings modal
+  - Toggle button in input area
+  - Passed to API in request
+- [ ] Search status indicators ("Searching web...")
 - [ ] Source citation display
 - [ ] Expandable sources panel
 - [ ] Search result formatting
 
-### Phase 6: Developer Tools
-**Priority: Medium**
-- [ ] Request/response logging system
-- [ ] Developer console UI
+**Note**: UI controls exist but web search results not yet handled
+
+### Phase 6: Developer Tools 🟨 PARTIAL
+**Priority: Medium** | **Status: 20% Implemented**
+- [x] Request/response logging system
+  - Logs stored in memory (max 100 entries)
+  - Captures method, URL, headers, body, status, duration
+  - Toggle via settings
+- [ ] Developer console UI (logs only in browser console)
 - [ ] Log filtering and search
 - [ ] Export functionality
 - [ ] Performance metrics
 
-### Phase 7: Polish & UX
-**Priority: Low**
+### Phase 7: Polish & UX ❌ NOT STARTED
+**Priority: Low** | **Status: Not Implemented**
 - [ ] Refined visual design
 - [ ] Loading states and transitions
 - [ ] Error message improvements
-- [ ] Keyboard shortcuts
+- [ ] Keyboard shortcuts (except Enter to send)
 - [ ] Mobile responsive design
 - [ ] Accessibility improvements
+
+**Current UX Features**:
+- Basic generating indicator (three dots)
+- Enter to send, Shift+Enter for newline
+- Clean OpenAI green color scheme
 
 ---
 
@@ -721,16 +782,16 @@ App
 ## Success Criteria
 
 ### Functional Success
-- [ ] Can create and manage conversations without any persistence
+- [x] Can create and manage conversations without any persistence
 - [ ] Can refresh page during generation and recover response
 - [ ] Streaming works smoothly with cancellation
-- [ ] Web search integration functions correctly
-- [ ] Settings are configurable and work as expected
-- [ ] Developer logs capture all API interactions
+- [ ] Web search integration functions correctly (partial - toggle implemented)
+- [x] Settings are configurable and work as expected
+- [x] Developer logs capture all API interactions
 
 ### UX Success
-- [ ] Interface is intuitive and responsive
-- [ ] State indicators are clear and helpful
+- [x] Interface is intuitive and responsive
+- [x] State indicators are clear and helpful (generating, message timestamps)
 - [ ] Error messages are actionable
 - [ ] Performance feels snappy despite stateless nature
 - [ ] Recovery from errors is graceful

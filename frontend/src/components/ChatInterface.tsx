@@ -1,163 +1,164 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback } from 'react';
 
-import { Bot, Send, User } from 'lucide-react';
+import { MessageSquare, Plus, Settings, Trash2 } from 'lucide-react';
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
+import { useConversation } from '../hooks/useConversation';
+import { useSettings } from '../hooks/useSettings';
+import { InputArea } from './InputArea';
+import { MessageList } from './MessageList';
+
+interface ChatInterfaceProps {
+  onOpenSettings: () => void;
 }
 
-export function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+export function ChatInterface({ onOpenSettings }: ChatInterfaceProps) {
+  const {
+    conversations,
+    activeConversation,
+    currentSession,
+    createConversation,
+    switchConversation,
+    deleteConversation,
+    sendMessage,
+    isGenerating,
+  } = useConversation();
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const { settings, updateSettings } = useSettings();
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  const handleSendMessage = useCallback(
+    async (content: string) => {
+      await sendMessage(content);
+    },
+    [sendMessage],
+  );
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputValue.trim() || isLoading) return;
+  const handleToggleWebSearch = useCallback(() => {
+    updateSettings({
+      tools: {
+        ...settings.tools,
+        webSearch: !settings.tools.webSearch,
+      },
+    });
+  }, [settings.tools, updateSettings]);
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: inputValue,
-      timestamp: new Date(),
-    };
+  const handleNewConversation = useCallback(async () => {
+    try {
+      await createConversation();
+    } catch (error) {
+      console.error('Failed to create conversation:', error);
+    }
+  }, [createConversation]);
 
-    setMessages((prev) => [...prev, userMessage]);
-    const currentInput = inputValue;
-    setInputValue('');
-    setIsLoading(true);
-
-    // Simulate AI response delay
-    setTimeout(() => {
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: `This is a demo response to: "${currentInput}"\n\nTo connect this to a real AI service, you'll need to:\n1. Add an API key for your preferred AI service (OpenAI, Anthropic, etc.)\n2. Replace this mock response with an actual API call\n3. Handle the API response appropriately`,
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-      setIsLoading(false);
-    }, 1000);
-  };
+  const handleDeleteConversation = useCallback(
+    async (id: string) => {
+      try {
+        await deleteConversation(id);
+      } catch (error) {
+        console.error('Failed to delete conversation:', error);
+      }
+    },
+    [deleteConversation],
+  );
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      <header className="bg-white border-b px-6 py-4">
-        <h1 className="text-2xl font-semibold text-gray-900">AI Chat Assistant</h1>
-      </header>
-
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-3xl mx-auto space-y-4">
-          {messages.length === 0 && (
-            <div className="text-center text-gray-500 mt-8">
-              <Bot className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <p className="text-lg">Start a conversation!</p>
-              <p className="text-sm mt-2">Type your message below to begin.</p>
-            </div>
-          )}
-
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              {message.role === 'assistant' && (
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                    <Bot className="w-5 h-5 text-white" />
-                  </div>
-                </div>
-              )}
-
-              <div
-                className={`max-w-md px-4 py-3 rounded-lg ${
-                  message.role === 'user'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white border border-gray-200 text-gray-900'
-                }`}
-              >
-                <p className="whitespace-pre-wrap">{message.content}</p>
-                <p
-                  className={`text-xs mt-1 ${
-                    message.role === 'user' ? 'text-blue-100' : 'text-gray-400'
-                  }`}
-                >
-                  {message.timestamp.toLocaleTimeString()}
-                </p>
-              </div>
-
-              {message.role === 'user' && (
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
-                    <User className="w-5 h-5 text-white" />
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-
-          {isLoading && (
-            <div className="flex gap-3 justify-start">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                  <Bot className="w-5 h-5 text-white" />
-                </div>
-              </div>
-              <div className="bg-white border border-gray-200 px-4 py-3 rounded-lg">
-                <div className="flex space-x-1">
-                  <div
-                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                    style={{ animationDelay: '0ms' }}
-                  ></div>
-                  <div
-                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                    style={{ animationDelay: '150ms' }}
-                  ></div>
-                  <div
-                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                    style={{ animationDelay: '300ms' }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="border-t bg-white p-4">
-        <div className="max-w-3xl mx-auto flex gap-3">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Type your message..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            disabled={isLoading}
-          />
+    <div className="flex h-screen">
+      <aside className="w-64 bg-gray-900 text-white flex flex-col">
+        <div className="p-4 border-b border-gray-800">
           <button
-            type="submit"
-            disabled={!inputValue.trim() || isLoading}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            onClick={handleNewConversation}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
           >
-            <Send className="w-5 h-5" />
+            <Plus className="w-5 h-5" />
+            New Conversation
           </button>
         </div>
-      </form>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="space-y-2">
+            {conversations.map((conv) => (
+              <div
+                key={conv.id}
+                className={`group relative p-3 rounded-lg cursor-pointer transition-colors ${
+                  activeConversation === conv.id ? 'bg-gray-800' : 'hover:bg-gray-800'
+                }`}
+                onClick={() => switchConversation(conv.id)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {conv.title || `Conversation ${conv.id.slice(0, 8)}`}
+                    </p>
+                    <p className="text-xs text-gray-400">{conv.messageCount} messages</p>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteConversation(conv.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-700 rounded transition-opacity"
+                  >
+                    <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-400" />
+                  </button>
+                </div>
+                {conv.status === 'generating' && (
+                  <div className="mt-1 flex gap-1">
+                    <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                    <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse delay-75" />
+                    <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse delay-150" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </aside>
+
+      <div className="flex-1 flex flex-col">
+        <header className="bg-white border-b px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-6 h-6 text-green-600" />
+              <h1 className="text-xl font-semibold text-gray-900">
+                OpenAI Responses & Conversations Demo
+              </h1>
+            </div>
+            <button
+              onClick={onOpenSettings}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <Settings className="w-5 h-5 text-gray-600" />
+            </button>
+          </div>
+        </header>
+
+        {!settings.api.apiKey ? (
+          <div className="flex-1 flex items-center justify-center bg-gray-50">
+            <div className="text-center max-w-md">
+              <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">API Key Required</h2>
+              <p className="text-gray-600 mb-4">
+                Please configure your OpenAI API key in settings to start chatting.
+              </p>
+              <button
+                onClick={onOpenSettings}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Open Settings
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <MessageList messages={currentSession?.messages || []} isGenerating={isGenerating} />
+            <InputArea
+              onSendMessage={handleSendMessage}
+              isGenerating={isGenerating}
+              webSearchEnabled={settings.tools.webSearch}
+              onToggleWebSearch={handleToggleWebSearch}
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 }
