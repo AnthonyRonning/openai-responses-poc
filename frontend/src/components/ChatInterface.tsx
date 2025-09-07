@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
-import { Send, User, Bot } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+
+import { Bot, Send, User } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -33,7 +34,7 @@ export function ChatInterface() {
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     const currentInput = inputValue;
     setInputValue('');
     setIsLoading(true);
@@ -47,7 +48,7 @@ export function ChatInterface() {
         timestamp: new Date(),
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, assistantMessage]);
       setIsLoading(false);
     }, 1000);
   };
@@ -67,13 +68,11 @@ export function ChatInterface() {
               <p className="text-sm mt-2">Type your message below to begin.</p>
             </div>
           )}
-          
+
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`flex gap-3 ${
-                message.role === 'user' ? 'justify-end' : 'justify-start'
-              }`}
+              className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {message.role === 'assistant' && (
                 <div className="flex-shrink-0">
@@ -82,7 +81,7 @@ export function ChatInterface() {
                   </div>
                 </div>
               )}
-              
+
               <div
                 className={`max-w-md px-4 py-3 rounded-lg ${
                   message.role === 'user'
@@ -91,13 +90,15 @@ export function ChatInterface() {
                 }`}
               >
                 <p className="whitespace-pre-wrap">{message.content}</p>
-                <p className={`text-xs mt-1 ${
-                  message.role === 'user' ? 'text-blue-100' : 'text-gray-400'
-                }`}>
+                <p
+                  className={`text-xs mt-1 ${
+                    message.role === 'user' ? 'text-blue-100' : 'text-gray-400'
+                  }`}
+                >
                   {message.timestamp.toLocaleTimeString()}
                 </p>
               </div>
-              
+
               {message.role === 'user' && (
                 <div className="flex-shrink-0">
                   <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
@@ -107,7 +108,7 @@ export function ChatInterface() {
               )}
             </div>
           ))}
-          
+
           {isLoading && (
             <div className="flex gap-3 justify-start">
               <div className="flex-shrink-0">
@@ -117,14 +118,23 @@ export function ChatInterface() {
               </div>
               <div className="bg-white border border-gray-200 px-4 py-3 rounded-lg">
                 <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  <div
+                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                    style={{ animationDelay: '0ms' }}
+                  ></div>
+                  <div
+                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                    style={{ animationDelay: '150ms' }}
+                  ></div>
+                  <div
+                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                    style={{ animationDelay: '300ms' }}
+                  ></div>
                 </div>
               </div>
             </div>
           )}
-          
+
           <div ref={messagesEndRef} />
         </div>
       </div>
