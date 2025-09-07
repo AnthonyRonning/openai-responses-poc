@@ -183,13 +183,21 @@ export class OpenAIClient {
     }
   }
 
-  async getConversationItems(id: string): Promise<ConversationItem[]> {
-    const url = `/conversations/${id}/items?order=asc`;
+  async getConversationItems(
+    id: string,
+    after?: string,
+    limit: number = 100,
+  ): Promise<{ items: ConversationItem[]; hasMore: boolean; lastId?: string }> {
+    const params = new URLSearchParams({ order: 'asc', limit: String(limit) });
+    if (after) {
+      params.set('after', after);
+    }
+    const url = `/conversations/${id}/items?${params}`;
     this.logRequest('GET', url);
     const startTime = Date.now();
 
     try {
-      const response = await fetch(`${this.client.baseURL}${url}`, {
+      const response = await fetch(`${this.client.baseURL}/conversations/${id}/items?${params}`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${this.client.apiKey}`,
@@ -203,7 +211,44 @@ export class OpenAIClient {
         throw new Error(data.error?.message || 'Failed to get conversation items');
       }
 
-      return data.data || [];
+      // Handle pagination - fetch all pages if has_more is true
+      let allItems = data.data || [];
+      let currentLastId = data.last_id;
+      let hasMore = data.has_more;
+
+      while (hasMore) {
+        const nextParams = new URLSearchParams({
+          order: 'asc',
+          limit: String(limit),
+          after: currentLastId,
+        });
+
+        const nextResponse = await fetch(
+          `${this.client.baseURL}/conversations/${id}/items?${nextParams}`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${this.client.apiKey}`,
+            },
+          },
+        );
+
+        const nextData = await nextResponse.json();
+
+        if (!nextResponse.ok) {
+          throw new Error(nextData.error?.message || 'Failed to get conversation items');
+        }
+
+        allItems = [...allItems, ...(nextData.data || [])];
+        currentLastId = nextData.last_id;
+        hasMore = nextData.has_more;
+      }
+
+      return {
+        items: allItems,
+        hasMore: false, // We fetched all pages
+        lastId: currentLastId,
+      };
     } catch (error) {
       if (this.logger) {
         this.logger({
