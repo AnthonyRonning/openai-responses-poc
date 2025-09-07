@@ -14,12 +14,33 @@ bun run dev        # Start development server on http://localhost:5173
 bun run build      # Build for production (runs TypeScript check + Vite build)
 bun run lint       # Run ESLint
 bun run preview    # Preview production build
+bun run format     # Format code with Prettier
+bun run format:check # Check code formatting without making changes
+bun run typecheck  # Run TypeScript type checking without building
 ```
 
 ### Nix Development Shell
 The project uses Nix for consistent development environments:
 ```bash
 nix develop        # Enter development shell with Bun, Node.js, and TypeScript tools
+```
+
+## Code Quality Tools
+
+### Formatting & Linting
+- **Prettier**: Automatically formats code with consistent style
+- **ESLint**: Catches code quality issues and potential bugs
+- **TypeScript**: Provides type checking for type safety
+
+### Git Hooks
+Pre-commit hooks are configured using Husky and lint-staged to:
+- Run Prettier formatting on all staged files
+- Run ESLint fixes on JavaScript/TypeScript files
+- Ensure code quality before each commit
+
+To bypass hooks in emergency (not recommended):
+```bash
+git commit --no-verify -m "your message"
 ```
 
 ## Architecture Overview
