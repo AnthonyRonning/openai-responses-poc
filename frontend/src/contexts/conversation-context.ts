@@ -14,6 +14,7 @@ export interface ConversationContextType {
   sendMessage: (content: string) => Promise<void>;
   clearLogs: () => void;
   isGenerating: boolean;
+  cancelGeneration: () => void;
 }
 
 export const ConversationContext = createContext<ConversationContextType | undefined>(undefined);

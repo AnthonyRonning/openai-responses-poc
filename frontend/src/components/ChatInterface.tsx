@@ -21,6 +21,7 @@ export function ChatInterface({ onOpenSettings }: ChatInterfaceProps) {
     deleteConversation,
     sendMessage,
     isGenerating,
+    cancelGeneration,
   } = useConversation();
 
   const { settings, updateSettings } = useSettings();
@@ -155,6 +156,7 @@ export function ChatInterface({ onOpenSettings }: ChatInterfaceProps) {
               isGenerating={isGenerating}
               webSearchEnabled={settings.tools.webSearch}
               onToggleWebSearch={handleToggleWebSearch}
+              onCancelGeneration={cancelGeneration}
             />
           </>
         )}

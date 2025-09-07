@@ -16,6 +16,7 @@ export interface ResponseCreateParams {
   background?: boolean;
   tools?: Array<{ type: string }>;
   previous_response_id?: string;
+  signal?: AbortSignal;
 }
 
 export interface ConversationItem {
@@ -219,7 +220,8 @@ export class OpenAIClient {
 
   async createResponse(params: ResponseCreateParams): Promise<Response | unknown> {
     const url = '/responses';
-    this.logRequest('POST', url, params);
+    const { signal, ...bodyParams } = params;
+    this.logRequest('POST', url, bodyParams);
     const startTime = Date.now();
 
     try {
@@ -230,7 +232,8 @@ export class OpenAIClient {
             Authorization: `Bearer ${this.client.apiKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(params),
+          body: JSON.stringify(bodyParams),
+          signal,
         });
 
         if (!response.ok) {
@@ -246,7 +249,8 @@ export class OpenAIClient {
             Authorization: `Bearer ${this.client.apiKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(params),
+          body: JSON.stringify(bodyParams),
+          signal,
         });
 
         const data = await response.json();
