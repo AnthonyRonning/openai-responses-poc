@@ -212,56 +212,68 @@ interface StreamConfig {
 
 ## Background Response Handling
 
-### Critical Feature Requirements
+### ⚠️ CRITICAL BUG DISCOVERED
 
-#### Initiate Background Response
+**Background mode with Conversations API has a severe bug**: When using `background: true` with the Conversations API, messages are NOT stored in the conversation items, even with `store: true`. This means:
+- Messages sent with background mode don't appear in conversation history
+- Page refresh loses all context from background responses
+- The conversation becomes broken/incomplete
+
+### Why Background Mode Isn't Needed
+
+**The Conversations API already handles state persistence properly without background mode:**
+- Regular streaming responses WITH conversations are stored correctly
+- Page refresh loads all messages from the conversation
+- Users can continue conversations seamlessly
+- The only limitation is losing in-progress streaming (which can be addressed differently)
+
+### Current Implementation
+We've **removed all background mode functionality** and rely solely on:
 ```javascript
 const response = await openai.responses.create({
   model: "gpt-4o",
   conversation: conversation_id,
   input: [{ role: "user", content: "..." }],
-  background: true,
-  stream: true, // Required for re-attachment
-  store: true
+  stream: true,
+  store: true  // Works correctly WITHOUT background: true
 });
-// Store response.id for later retrieval
 ```
 
-#### Page Refresh Scenario
-1. **Before Refresh**:
-   - Store `response_id` in URL params or sessionStorage (minimal)
-   - Store `conversation_id` similarly
-   
-2. **After Refresh**:
-   - Retrieve stored IDs
-   - Call `GET /v1/responses/{response_id}` to check status
-   - If still generating, re-attach to stream
-   - If complete, display final response
+### TODO: Handle Long-Running Responses on Refresh
 
-#### Re-attachment Logic
-```typescript
-async function reattachToResponse(response_id: string) {
-  // Check response status
-  const response = await fetch(`/v1/responses/${response_id}`);
-  
-  if (response.status === 'in_progress') {
-    // Re-establish SSE connection
-    const eventSource = new EventSource(
-      `/v1/responses/${response_id}/events`
-    );
-    // Handle streaming events
-  } else if (response.status === 'completed') {
-    // Display completed response
-  }
-}
-```
+**Unresolved Issue**: When a user refreshes during a long-running streaming response:
+1. The in-progress response is lost
+2. The conversation shows only completed messages
+3. No way to resume the interrupted stream
 
-### Background Response States
-- **Queued**: Request accepted, not started
-- **In Progress**: Actively generating
-- **Completed**: Full response available
-- **Failed**: Error occurred
-- **Cancelled**: User or system cancelled
+**Potential Solution to Investigate**:
+- Check if the Conversations API provides a status field for in-progress responses
+- Poll the conversation or response endpoint to detect ongoing generation
+- Re-attach to the stream if still running
+- Show appropriate UI state (e.g., "Response was generating, please retry")
+
+**Research needed**:
+- Does `/conversations/{id}` show any status for ongoing responses?
+- Can we detect incomplete responses through the API?
+- Is there a way to resume interrupted streams with conversation context?
+
+### Phase 3 Status: ❌ INCOMPLETE
+
+**What was completed**:
+- ✅ Removed all background mode code (due to critical bug)
+- ✅ Conversation ID persists in URL
+- ✅ Page refresh loads conversation history correctly
+- ✅ Fixed message ordering issues (oldest to newest)
+- ✅ Fixed timestamp handling for loaded messages
+
+**What remains TODO**:
+- ❌ Detect and handle in-progress responses on page refresh
+- ❌ Research if Conversations API provides generation status
+- ❌ Implement polling mechanism for ongoing responses
+- ❌ UI indicators for interrupted/resumable responses
+
+**Note**: Background mode is fundamentally broken with Conversations API. 
+The feature needs to be redesigned using different approaches (polling, status checks, etc.)
 
 ---
 

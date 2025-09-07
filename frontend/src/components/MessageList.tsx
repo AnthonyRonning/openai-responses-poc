@@ -60,14 +60,16 @@ export function MessageList({ messages, isGenerating }: MessageListProps) {
                   <div className="w-2 h-2 bg-current rounded-full animate-bounce delay-150" />
                 </div>
               )}
-              <div
-                className={`mt-2 text-xs flex items-center gap-1 ${
-                  message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
-                }`}
-              >
-                <Clock className="w-3 h-3" />
-                {formatTime(message.timestamp)}
-              </div>
+              {message.timestamp > 0 && (
+                <div
+                  className={`mt-2 text-xs flex items-center gap-1 ${
+                    message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
+                  }`}
+                >
+                  <Clock className="w-3 h-3" />
+                  {formatTime(message.timestamp)}
+                </div>
+              )}
             </div>
 
             {message.role === 'user' && (

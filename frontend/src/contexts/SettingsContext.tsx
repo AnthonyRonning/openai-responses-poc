@@ -1,4 +1,5 @@
-import { ReactNode, useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
+import type { ReactNode } from 'react';
 
 import type { AppSettings } from '../types';
 import { SettingsContext } from './settings-context';

@@ -7,7 +7,11 @@ export interface StreamChunk {
   item_id?: string;
   output_index?: number;
   content_index?: number;
-  response?: unknown;
+  response?: {
+    id?: string;
+    status?: string;
+    [key: string]: unknown;
+  };
 }
 
 export class SSEParser {
@@ -91,6 +95,7 @@ export class StreamManager {
     onContent: (content: string) => void,
     onComplete?: () => void,
     onError?: (error: Error) => void,
+    onChunk?: (chunk: StreamChunk) => void,
   ): Promise<void> {
     this.abortController = new AbortController();
 
@@ -98,6 +103,11 @@ export class StreamManager {
       for await (const chunk of streamResponse(response)) {
         if (this.abortController.signal.aborted) {
           break;
+        }
+
+        // Call chunk handler if provided (for extracting metadata)
+        if (onChunk) {
+          onChunk(chunk);
         }
 
         const content = extractContentFromChunk(chunk);

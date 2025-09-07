@@ -1,4 +1,5 @@
-import { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 
 import { useSettings } from '../hooks/useSettings';
 import { OpenAIClient } from '../lib/openai-client';
@@ -14,7 +15,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const streamManagerRef = useRef<StreamManager>(new StreamManager());
-  const abortControllerRef = useRef<AbortController>();
+  const abortControllerRef = useRef<AbortController | undefined>(undefined);
 
   const client = useMemo(() => {
     if (!settings.api.apiKey) return null;
@@ -47,6 +48,11 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
         conversationId: conversation.id,
         messages: [],
       });
+
+      // Update URL with conversation ID
+      const params = new URLSearchParams(window.location.search);
+      params.set('conversation_id', conversation.id);
+      window.history.replaceState({}, '', `${window.location.pathname}?${params}`);
     } catch (error) {
       console.error('Failed to create conversation:', error);
       throw error;
@@ -61,13 +67,27 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
         const items = await client.getConversationItems(id);
         const messages: Message[] = items
           .filter((item) => item.type === 'message' && item.role && item.content)
-          .map((item) => ({
-            id: item.id,
-            role: item.role as 'user' | 'assistant' | 'system',
-            content: item.content!,
-            timestamp: item.created_at * 1000,
-            status: 'complete' as const,
-          }));
+          .map((item) => {
+            // Extract text from content array
+            let text = '';
+            if (Array.isArray(item.content)) {
+              for (const part of item.content) {
+                if (typeof part === 'object' && part.text) {
+                  text += part.text;
+                }
+              }
+            } else if (typeof item.content === 'string') {
+              text = item.content;
+            }
+
+            return {
+              id: item.id,
+              role: item.role as 'user' | 'assistant' | 'system',
+              content: text,
+              timestamp: 0, // API doesn't provide timestamps for loaded messages
+              status: 'complete' as const,
+            };
+          }); // API now returns in ascending order (oldest first)
 
         return messages;
       } catch (error) {
@@ -109,6 +129,11 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
           conversationId: id,
           messages,
         });
+
+        // Update URL with conversation ID
+        const params = new URLSearchParams(window.location.search);
+        params.set('conversation_id', id);
+        window.history.replaceState({}, '', `${window.location.pathname}?${params}`);
       } catch (error) {
         console.error('Failed to load conversation:', error);
         throw error;
@@ -175,6 +200,11 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
             conversationId: conversation.id,
             messages: [],
           });
+
+          // Update URL with conversation ID
+          const params = new URLSearchParams(window.location.search);
+          params.set('conversation_id', conversation.id);
+          window.history.replaceState({}, '', `${window.location.pathname}?${params}`);
         } catch (error) {
           console.error('Failed to create conversation:', error);
           throw error;
@@ -231,6 +261,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
           signal: abortControllerRef.current.signal,
         });
 
+        // Check if this is a streaming response
         if (settings.streaming.enabled && response instanceof Response) {
           // Streaming response
           const assistantMessage: Message = {
@@ -270,7 +301,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
                 if (!prev) return prev;
                 const messages = prev.messages.map((msg, idx) => {
                   if (idx === prev.messages.length - 1 && msg.role === 'assistant') {
-                    return { ...msg, status: 'complete' };
+                    return { ...msg, status: 'complete' as const };
                   }
                   return msg;
                 });
@@ -296,10 +327,14 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
           );
         } else {
           // Non-streaming response
+          const responseData = response as {
+            id: string;
+            output?: Array<{ content?: Array<{ text?: string }> }>;
+          };
           const assistantMessage: Message = {
-            id: response.id,
+            id: responseData.id,
             role: 'assistant',
-            content: response.output?.[0]?.content?.[0]?.text || 'No response generated',
+            content: responseData.output?.[0]?.content?.[0]?.text || 'No response generated',
             timestamp: Date.now(),
             status: 'complete',
           };
@@ -356,6 +391,36 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
       ),
     );
   }, [activeConversation]);
+
+  // Check for conversation on mount
+  useEffect(() => {
+    // Only run once on mount when client is ready
+    if (!client) return;
+
+    const initializeFromUrl = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const conversationId = params.get('conversation_id');
+
+      // Load the conversation if we have one in the URL and not already loaded
+      if (conversationId && !activeConversation) {
+        try {
+          await loadConversation(conversationId);
+        } catch (error) {
+          console.error('Failed to load conversation from URL:', error);
+          // Remove invalid conversation_id from URL
+          params.delete('conversation_id');
+          window.history.replaceState(
+            {},
+            '',
+            params.toString() ? `${window.location.pathname}?${params}` : window.location.pathname,
+          );
+        }
+      }
+    };
+
+    initializeFromUrl();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client]); // Only depend on client to avoid infinite loops
 
   // Remove auto-creation of conversation on mount
 

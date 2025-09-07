@@ -11,7 +11,7 @@ Navigate to the `frontend/` directory for all frontend commands:
 cd frontend
 bun install        # Install dependencies
 bun run dev        # Start development server on http://localhost:5173
-bun run build      # Build for production (runs TypeScript check + Vite build)
+bun run build      # Build for production (runs TypeScript check + Vite build) - USE THIS FOR TYPE CHECKING
 bun run lint       # Run ESLint
 bun run preview    # Preview production build
 bun run format     # Format code with Prettier
@@ -34,9 +34,12 @@ nix develop        # Enter development shell with Bun, Node.js, and TypeScript t
 
 ### Git Hooks
 Pre-commit hooks are configured using Husky and lint-staged to:
+- Run full build (TypeScript + Vite) to catch all type errors
 - Run Prettier formatting on all staged files
 - Run ESLint fixes on JavaScript/TypeScript files
 - Ensure code quality before each commit
+
+**IMPORTANT**: Always run `bun run build` to catch type errors that simple `tsc --noEmit` might miss
 
 To bypass hooks in emergency (not recommended):
 ```bash
@@ -71,4 +74,4 @@ This is a **client-side only** React application for an AI chat interface with n
 
 2. **AI Integration Points**: To connect to a real AI service, modify the `handleSubmit` function in `ChatInterface.tsx` to replace the setTimeout mock with actual API calls.
 
-3. **Build Process**: Always run `bun run build` (not just `vite build`) to ensure TypeScript checking happens before the build.
+3. **Build Process**: Always run `bun run build` (not just `vite build` or `bun run typecheck`) to ensure TypeScript checking happens before the build. The build command catches more errors than typecheck alone, including runtime import issues.

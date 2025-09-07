@@ -1,2 +1,2 @@
 #!/bin/sh
-cd frontend && bun run lint-staged
+cd frontend && bun run build && bun run lint-staged

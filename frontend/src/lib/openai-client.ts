@@ -23,8 +23,9 @@ export interface ConversationItem {
   id: string;
   type: 'message' | 'tool_call' | 'tool_output';
   role?: string;
-  content?: string;
+  content?: string | Array<{ type: string; text?: string; [key: string]: unknown }>;
   created_at: number;
+  status?: string;
 }
 
 export class OpenAIClient {
@@ -183,7 +184,7 @@ export class OpenAIClient {
   }
 
   async getConversationItems(id: string): Promise<ConversationItem[]> {
-    const url = `/conversations/${id}/items`;
+    const url = `/conversations/${id}/items?order=asc`;
     this.logRequest('GET', url);
     const startTime = Date.now();
 
