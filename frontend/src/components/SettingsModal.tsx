@@ -77,8 +77,31 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 50,
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '0.5rem',
+          padding: '1.5rem',
+          width: '100%',
+          maxWidth: '42rem',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+        }}
+      >
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-semibold text-gray-900">Settings</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
@@ -214,30 +237,6 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             </label>
             <p className="mt-1 ml-7 text-xs text-gray-500">
               Allow AI to search the web for current information
-            </p>
-          </div>
-
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Developer Options</h3>
-
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={settings.developer.showLogs}
-                onChange={(e) =>
-                  updateSettings({
-                    developer: {
-                      ...settings.developer,
-                      showLogs: e.target.checked,
-                    },
-                  })
-                }
-                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-              />
-              <span className="text-sm text-gray-700">Show API logs</span>
-            </label>
-            <p className="mt-1 ml-7 text-xs text-gray-500">
-              Display request/response logs in developer console
             </p>
           </div>
         </div>

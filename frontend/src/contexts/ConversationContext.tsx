@@ -8,7 +8,6 @@ import type {
   ActiveSession,
   Conversation,
   ConversationItem,
-  LogEntry,
   Message,
   WebSearchCall,
 } from '../types';
@@ -19,7 +18,6 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<string>();
   const [currentSession, setCurrentSession] = useState<ActiveSession>();
-  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastSeenItemId, setLastSeenItemId] = useState<string | undefined>();
   const streamManagerRef = useRef<StreamManager>(new StreamManager());
@@ -29,11 +27,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   const client = useMemo(() => {
     if (!settings.api.apiKey) return null;
 
-    return new OpenAIClient(settings, (entry) => {
-      if (settings.developer.showLogs) {
-        setLogs((prev) => [...prev.slice(-99), entry]);
-      }
-    });
+    return new OpenAIClient(settings);
   }, [settings]);
 
   const createConversation = useCallback(async () => {
@@ -625,10 +619,6 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
     [client, currentSession, settings, generateTitle],
   );
 
-  const clearLogs = useCallback(() => {
-    setLogs([]);
-  }, []);
-
   const cancelGeneration = useCallback(() => {
     // Cancel the HTTP request
     if (abortControllerRef.current) {
@@ -858,14 +848,12 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
         conversations,
         activeConversation,
         currentSession,
-        logs,
         createConversation,
         loadConversation,
         deleteConversation,
         deleteMessage,
         switchConversation,
         sendMessage,
-        clearLogs,
         isGenerating,
         cancelGeneration,
         generateTitle,

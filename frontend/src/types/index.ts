@@ -12,10 +12,6 @@ export interface AppSettings {
   tools: {
     webSearch: boolean;
   };
-  developer: {
-    showLogs: boolean;
-    logLevel: 'none' | 'basic' | 'verbose';
-  };
 }
 
 export interface Conversation {
@@ -62,17 +58,4 @@ export interface ActiveSession {
   items: ConversationItem[];
   responseId?: string;
   backgroundId?: string;
-}
-
-export interface LogEntry {
-  id: string;
-  timestamp: number;
-  type: 'request' | 'response' | 'error' | 'stream';
-  method: string;
-  url: string;
-  headers?: Record<string, string>;
-  body?: unknown;
-  status?: number;
-  duration?: number;
-  size?: number;
 }

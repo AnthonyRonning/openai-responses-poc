@@ -16,11 +16,10 @@
 7. [Web Search Tool Integration](#web-search-tool-integration)
 8. [Settings & Configuration](#settings--configuration)
 9. [UI/UX Requirements](#uiux-requirements)
-10. [Request/Response Logging](#requestresponse-logging)
-11. [Technical Architecture](#technical-architecture)
-12. [Error Handling & Edge Cases](#error-handling--edge-cases)
-13. [Implementation Phases](#implementation-phases)
-14. [Future Enhancements](#future-enhancements)
+10. [Technical Architecture](#technical-architecture)
+11. [Error Handling & Edge Cases](#error-handling--edge-cases)
+12. [Implementation Phases](#implementation-phases)
+13. [Future Enhancements](#future-enhancements)
 
 ---
 
@@ -368,10 +367,6 @@ interface AppSettings {
   tools: {
     web_search: boolean; // Default: true
   };
-  developer: {
-    show_logs: boolean; // Default: false
-    log_level: 'none' | 'basic' | 'verbose';
-  };
 }
 ```
 
@@ -382,11 +377,8 @@ interface AppSettings {
    - Model selector/input
    - Stream toggle
 
-2. **Developer Tools Panel**
-   - Show/hide request logs toggle
-   - Log verbosity selector
-   - Clear logs button
-   - Export logs option
+2. **Tools Panel**
+   - Web search toggle
 
 ### Settings Persistence
 - Use React Context for settings state
@@ -415,8 +407,6 @@ interface AppSettings {
 │            │  │   Input Area     │ │
 │            │  └──────────────────┘ │
 └────────────┴────────────────────────┘
-│   Developer Console (collapsible)   │
-└─────────────────────────────────────┘
 ```
 
 ### Component Specifications
@@ -459,14 +449,6 @@ interface AppSettings {
   - "Thinking..." for non-streamed
 - **Error States**: Red banner with retry
 
-#### 5. Developer Console
-- Hidden by default
-- Toggle via keyboard shortcut (Cmd/Ctrl+D)
-- Tabbed interface:
-  - Requests tab
-  - Responses tab
-  - Errors tab
-- Copy/Export functionality
 
 ### Visual Design
 - **Theme**: Clean, modern, minimal
@@ -477,66 +459,6 @@ interface AppSettings {
 - **Typography**: System fonts
 - **Spacing**: Consistent 8px grid
 - **Animations**: Subtle, smooth transitions
-
----
-
-## Request/Response Logging
-
-### Logging System Architecture
-```typescript
-interface LogEntry {
-  id: string;
-  timestamp: number;
-  type: 'request' | 'response' | 'error' | 'stream';
-  method: string;
-  url: string;
-  headers?: Record<string, string>;
-  body?: any;
-  status?: number;
-  duration?: number;
-  size?: number;
-}
-
-class Logger {
-  private logs: LogEntry[] = [];
-  private maxLogs = 100;
-  
-  log(entry: LogEntry): void;
-  clear(): void;
-  export(): string; // JSON format
-  filter(type: string): LogEntry[];
-}
-```
-
-### Logging Features
-1. **Request Logging**:
-   - Full URL and method
-   - Headers (hide Authorization)
-   - Request body (formatted JSON)
-   - Timestamp
-
-2. **Response Logging**:
-   - Status code
-   - Response headers
-   - Response body (truncated if large)
-   - Duration calculation
-
-3. **Stream Logging**:
-   - Individual SSE events
-   - Token accumulation
-   - Stream completion stats
-
-4. **Error Logging**:
-   - Error type and message
-   - Stack trace (development mode)
-   - Request context
-
-### UI Components
-- **Log Viewer**: Collapsible panel at bottom
-- **Log Filters**: By type, status, timeframe
-- **Log Search**: Find specific entries
-- **Log Export**: Download as JSON/CSV
-- **Performance Metrics**: Request count, avg duration
 
 ---
 
@@ -560,11 +482,9 @@ interface AppState {
   conversations: Conversation[];
   activeConversation?: string;
   currentSession?: ActiveSession;
-  logs: LogEntry[];
   ui: {
     sidebarOpen: boolean;
     settingsOpen: boolean;
-    devConsoleOpen: boolean;
   };
 }
 
@@ -614,9 +534,6 @@ App
 │   │   │   └── StreamingMessage
 │   │   ├── InputArea
 │   │   └── StatusBar
-│   └── DeveloperConsole
-│       ├── LogViewer
-│       └── LogFilters
 └── SettingsModal
 ```
 
@@ -693,7 +610,7 @@ App
 - **✅ Phase 3**: Background Responses - **COMPLETE** (with documented API limitations)
 - **✅ Phase 4**: Conversation Management - **COMPLETE**
 - **✅ Phase 5**: Web Search - **COMPLETE**
-- **🟨 Phase 6**: Developer Tools - 20% Complete (logging only)
+- **❌ Phase 6**: Developer Tools - Removed (decided to simplify, no logging needed)
 - **❌ Phase 7**: Polish & UX - Not Started
 
 **What's Working Now**:
@@ -720,7 +637,6 @@ App
 - Background mode is broken with Conversations API (OpenAI bug)
 - No way to have responses continue generating while tab is closed
 - Web search source citations require additional API data not provided
-- Logs only visible in browser console (developer console UI not yet implemented)
 
 ### Phase 1: Core Foundation (MVP) ✅ COMPLETE
 **Priority: Critical** | **Status: Fully Implemented**
@@ -844,16 +760,11 @@ App
 
 **Note**: Full web search UI implemented. Source citations and expandable panels would require additional API data not currently provided in web search events
 
-### Phase 6: Developer Tools 🟨 PARTIAL
-**Priority: Medium** | **Status: 20% Implemented**
-- [x] Request/response logging system
-  - Logs stored in memory (max 100 entries)
-  - Captures method, URL, headers, body, status, duration
-  - Toggle via settings
-- [ ] Developer console UI (logs only in browser console)
-- [ ] Log filtering and search
-- [ ] Export functionality
-- [ ] Performance metrics
+### Phase 6: Developer Tools ❌ REMOVED
+**Priority: Low** | **Status: Removed from scope**
+- Decision made to simplify the application and remove logging functionality
+- No developer console or request/response logging implemented
+- Settings focused only on essential configuration (API key, host, model)
 
 ### Phase 7: Polish & UX ❌ NOT STARTED
 **Priority: Low** | **Status: Not Implemented**
@@ -903,9 +814,8 @@ App
 - [x] Conversation titles generate and persist correctly
 - [x] Individual messages can be deleted
 - [x] Proper ID management (local vs server IDs)
-- [ ] Web search integration functions correctly (partial - toggle implemented)
+- [x] Web search integration functions correctly (toggle implemented)
 - [x] Settings are configurable and work as expected
-- [x] Developer logs capture all API interactions
 
 ### UX Success
 - [x] Interface is intuitive and responsive

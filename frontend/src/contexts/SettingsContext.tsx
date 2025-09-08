@@ -18,10 +18,6 @@ const defaultSettings: AppSettings = {
   tools: {
     webSearch: true,
   },
-  developer: {
-    showLogs: false,
-    logLevel: 'basic',
-  },
 };
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
@@ -51,9 +47,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       }
       if (updates.tools) {
         newSettings.tools = { ...prev.tools, ...updates.tools };
-      }
-      if (updates.developer) {
-        newSettings.developer = { ...prev.developer, ...updates.developer };
       }
 
       return newSettings;
