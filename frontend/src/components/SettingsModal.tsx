@@ -1,6 +1,20 @@
 import { useEffect, useState } from 'react';
 
-import { Eye, EyeOff, TestTube, X } from 'lucide-react';
+import { Eye, EyeOff, Loader2, TestTube } from 'lucide-react';
+
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 
 import { useSettings } from '../hooks/useSettings';
 
@@ -74,188 +88,116 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 50,
-      }}
-    >
-      <div
-        style={{
-          backgroundColor: 'white',
-          borderRadius: '0.5rem',
-          padding: '1.5rem',
-          width: '100%',
-          maxWidth: '42rem',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-        }}
-      >
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-semibold text-gray-900">Settings</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <X className="w-5 h-5 text-gray-600" />
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[525px]">
+        <DialogHeader>
+          <DialogTitle>Settings</DialogTitle>
+          <DialogDescription>Configure your OpenAI API settings and preferences.</DialogDescription>
+        </DialogHeader>
 
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">API Configuration</h3>
+        <div className="space-y-6 py-4">
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold">API Configuration</h3>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
-                <div className="relative">
-                  <input
-                    type={showApiKey ? 'text' : 'password'}
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="sk-..."
-                    className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowApiKey(!showApiKey)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded"
-                  >
-                    {showApiKey ? (
-                      <EyeOff className="w-5 h-5 text-gray-600" />
-                    ) : (
-                      <Eye className="w-5 h-5 text-gray-600" />
-                    )}
-                  </button>
-                </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  Your OpenAI API key. Get one from platform.openai.com
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Base URL</label>
-                <input
-                  type="text"
-                  value={baseUrl}
-                  onChange={(e) => setBaseUrl(e.target.value)}
-                  placeholder="https://api.openai.com/v1"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            <div className="space-y-2">
+              <Label htmlFor="api-key">API Key</Label>
+              <div className="relative">
+                <Input
+                  id="api-key"
+                  type={showApiKey ? 'text' : 'password'}
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="sk-..."
+                  className="pr-10"
                 />
-                <p className="mt-1 text-xs text-gray-500">
-                  API endpoint URL (for custom deployments)
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Model</label>
-                <input
-                  type="text"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  placeholder="gpt-4o"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Model to use for responses (e.g., gpt-4o, gpt-4o-mini)
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={testApiConnection}
-                  disabled={isTesting || !apiKey}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full"
+                  onClick={() => setShowApiKey(!showApiKey)}
                 >
-                  <TestTube className="w-4 h-4" />
-                  {isTesting ? 'Testing...' : 'Test Connection'}
-                </button>
-
-                {testResult && (
-                  <div
-                    className={`flex-1 px-3 py-2 rounded-lg text-sm ${
-                      testResult.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                    }`}
-                  >
-                    {testResult.message}
-                  </div>
-                )}
+                  {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Your OpenAI API key. Get one from platform.openai.com
+              </p>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="base-url">Base URL</Label>
+              <Input
+                id="base-url"
+                type="text"
+                value={baseUrl}
+                onChange={(e) => setBaseUrl(e.target.value)}
+                placeholder="https://api.openai.com/v1"
+              />
+              <p className="text-xs text-muted-foreground">
+                API endpoint URL (use default for OpenAI)
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="model">Model</Label>
+              <Input
+                id="model"
+                type="text"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                placeholder="gpt-4o"
+              />
+              <p className="text-xs text-muted-foreground">The model to use for responses</p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={testApiConnection}
+                disabled={isTesting || !apiKey}
+                className="flex-1"
+              >
+                {isTesting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Testing...
+                  </>
+                ) : (
+                  <>
+                    <TestTube className="mr-2 h-4 w-4" />
+                    Test Connection
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {testResult && (
+              <Alert variant={testResult.success ? 'default' : 'destructive'}>
+                <AlertDescription>{testResult.message}</AlertDescription>
+              </Alert>
+            )}
           </div>
 
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Streaming</h3>
+          <Separator />
 
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={settings.streaming.enabled}
-                onChange={(e) =>
-                  updateSettings({
-                    streaming: {
-                      ...settings.streaming,
-                      enabled: e.target.checked,
-                    },
-                  })
-                }
-                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-              />
-              <span className="text-sm text-gray-700">Enable streaming responses</span>
-            </label>
-            <p className="mt-1 ml-7 text-xs text-gray-500">
-              Show AI responses as they're generated (recommended)
-            </p>
-          </div>
-
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Tools</h3>
-
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={settings.tools.webSearch}
-                onChange={(e) =>
-                  updateSettings({
-                    tools: {
-                      ...settings.tools,
-                      webSearch: e.target.checked,
-                    },
-                  })
-                }
-                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-              />
-              <span className="text-sm text-gray-700">Enable web search</span>
-            </label>
-            <p className="mt-1 ml-7 text-xs text-gray-500">
-              Allow AI to search the web for current information
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold">Appearance</h3>
+            <p className="text-sm text-muted-foreground">
+              Dark mode and theme settings coming soon...
             </p>
           </div>
         </div>
 
-        <div className="mt-8 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-          >
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            Save Changes
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+          <Button onClick={handleSave}>Save Settings</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

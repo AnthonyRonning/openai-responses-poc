@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { Bot, Clock, Trash2, User } from 'lucide-react';
+import { Bot, Clock, Sparkles, Trash2, User } from 'lucide-react';
+
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 import type { Message } from '../types';
 import { WebSearchIndicator } from './WebSearchIndicator';
@@ -29,100 +36,137 @@ export function MessageList({ messages, isGenerating, onDeleteMessage }: Message
   };
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-6">
-      <div className="max-w-3xl mx-auto space-y-6">
-        {messages.length === 0 && !isGenerating && (
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-              Welcome to OpenAI Responses & Conversations Demo
-            </h2>
-            <p className="text-gray-600">Start a conversation by typing a message below</p>
-          </div>
-        )}
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`group flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            onMouseEnter={() => setHoveredMessageId(message.id)}
-            onMouseLeave={() => setHoveredMessageId(null)}
-          >
-            {message.role === 'assistant' && (
-              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                <Bot className="w-5 h-5 text-green-600" />
+    <ScrollArea className="flex-1">
+      <div className="px-6 py-6">
+        <div className="max-w-6xl mx-auto space-y-4">
+          {messages.length === 0 && !isGenerating && (
+            <div className="text-center py-12 space-y-2">
+              <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <Sparkles className="h-8 w-8 text-primary" />
               </div>
-            )}
+              <h2 className="text-2xl font-semibold">Welcome to OpenAI Conversations</h2>
+              <p className="text-muted-foreground">
+                Start a conversation by typing a message below
+              </p>
+            </div>
+          )}
 
-            <div className="relative">
-              <div className="flex flex-col gap-2">
-                {message.webSearchCalls && message.webSearchCalls.length > 0 && (
-                  <WebSearchIndicator searches={message.webSearchCalls} />
-                )}
-                <div
-                  className={`max-w-[70%] ${
-                    message.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'
-                  } rounded-lg px-4 py-3`}
-                >
-                  <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
-                  {message.status === 'streaming' && (
-                    <div className="mt-2 flex items-center gap-1">
-                      <div className="w-2 h-2 bg-current rounded-full animate-bounce" />
-                      <div className="w-2 h-2 bg-current rounded-full animate-bounce delay-75" />
-                      <div className="w-2 h-2 bg-current rounded-full animate-bounce delay-150" />
-                    </div>
-                  )}
-                  {message.timestamp > 0 && (
-                    <div
-                      className={`mt-2 text-xs flex items-center gap-1 ${
-                        message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
-                      }`}
-                    >
-                      <Clock className="w-3 h-3" />
-                      {formatTime(message.timestamp)}
-                    </div>
-                  )}
-                </div>
-              </div>
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={cn(
+                'group flex gap-3',
+                message.role === 'user' ? 'justify-end' : 'justify-start',
+              )}
+              onMouseEnter={() => setHoveredMessageId(message.id)}
+              onMouseLeave={() => setHoveredMessageId(null)}
+            >
+              {message.role === 'assistant' && (
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-primary/10">
+                    <Bot className="h-4 w-4 text-primary" />
+                  </AvatarFallback>
+                </Avatar>
+              )}
 
-              {onDeleteMessage &&
-                hoveredMessageId === message.id &&
-                message.status !== 'streaming' && (
-                  <button
-                    onClick={() => onDeleteMessage(message.id)}
-                    className={`absolute top-2 ${
-                      message.role === 'user' ? '-left-8' : '-right-8'
-                    } p-1 rounded hover:bg-gray-200 transition-colors`}
-                    title="Delete message"
+              <div className="relative flex-1 max-w-[70%]">
+                <div className="flex flex-col gap-2">
+                  {message.webSearchCalls && message.webSearchCalls.length > 0 && (
+                    <WebSearchIndicator searches={message.webSearchCalls} />
+                  )}
+
+                  <Card
+                    className={cn(
+                      'relative overflow-hidden',
+                      message.role === 'user'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-muted/50',
+                    )}
                   >
-                    <Trash2 className="w-4 h-4 text-gray-500 hover:text-red-500" />
-                  </button>
-                )}
-            </div>
+                    <div className="px-4 py-3">
+                      <div className="text-sm whitespace-pre-wrap break-words">
+                        {message.content}
+                      </div>
 
-            {message.role === 'user' && (
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <User className="w-5 h-5 text-blue-600" />
+                      {message.status === 'streaming' && (
+                        <div className="mt-2 flex items-center gap-1">
+                          <div className="w-1.5 h-1.5 bg-current rounded-full animate-pulse" />
+                          <div className="w-1.5 h-1.5 bg-current rounded-full animate-pulse delay-75" />
+                          <div className="w-1.5 h-1.5 bg-current rounded-full animate-pulse delay-150" />
+                        </div>
+                      )}
+                    </div>
+
+                    {message.timestamp > 0 && (
+                      <div
+                        className={cn(
+                          'px-4 pb-2 text-xs flex items-center gap-1',
+                          message.role === 'user'
+                            ? 'text-primary-foreground/70'
+                            : 'text-muted-foreground',
+                        )}
+                      >
+                        <Clock className="h-3 w-3" />
+                        {formatTime(message.timestamp)}
+                      </div>
+                    )}
+                  </Card>
+                </div>
+
+                {onDeleteMessage &&
+                  hoveredMessageId === message.id &&
+                  message.status !== 'streaming' && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            'absolute top-0 h-8 w-8',
+                            message.role === 'user' ? '-left-10' : '-right-10',
+                          )}
+                          onClick={() => onDeleteMessage(message.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Delete message</TooltipContent>
+                    </Tooltip>
+                  )}
               </div>
-            )}
-          </div>
-        ))}
 
-        {isGenerating && messages[messages.length - 1]?.role === 'user' && (
-          <div className="flex gap-3 justify-start">
-            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-              <Bot className="w-5 h-5 text-green-600" />
+              {message.role === 'user' && (
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback>
+                    <User className="h-4 w-4" />
+                  </AvatarFallback>
+                </Avatar>
+              )}
             </div>
-            <div className="bg-gray-100 text-gray-900 rounded-lg px-4 py-3">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-gray-600 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-gray-600 rounded-full animate-bounce delay-75" />
-                <div className="w-2 h-2 bg-gray-600 rounded-full animate-bounce delay-150" />
-              </div>
-            </div>
-          </div>
-        )}
+          ))}
 
-        <div ref={bottomRef} />
+          {isGenerating && messages[messages.length - 1]?.role === 'user' && (
+            <div className="flex gap-3 justify-start">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-primary/10">
+                  <Bot className="h-4 w-4 text-primary" />
+                </AvatarFallback>
+              </Avatar>
+              <Card className="bg-muted/50">
+                <div className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-foreground/60 rounded-full animate-pulse" />
+                    <div className="w-1.5 h-1.5 bg-foreground/60 rounded-full animate-pulse delay-75" />
+                    <div className="w-1.5 h-1.5 bg-foreground/60 rounded-full animate-pulse delay-150" />
+                  </div>
+                </div>
+              </Card>
+            </div>
+          )}
+
+          <div ref={bottomRef} />
+        </div>
       </div>
-    </div>
+    </ScrollArea>
   );
 }

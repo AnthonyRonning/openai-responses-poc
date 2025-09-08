@@ -771,14 +771,6 @@ App
 - [ ] Refined visual design
 - [ ] Loading states and transitions
 - [ ] Error message improvements
-- [ ] Keyboard shortcuts (except Enter to send)
-- [ ] Mobile responsive design
-- [ ] Accessibility improvements
-
-**Current UX Features**:
-- Basic generating indicator (three dots)
-- Enter to send, Shift+Enter for newline
-- Clean OpenAI green color scheme
 
 ---
 

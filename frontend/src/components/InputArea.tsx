@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 
-import { Globe, Loader2, Send, X } from 'lucide-react';
+import { Loader2, Search, Send, X } from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface InputAreaProps {
   onSendMessage: (message: string) => Promise<void>;
@@ -56,66 +63,82 @@ export function InputArea({
   };
 
   return (
-    <div className="border-t bg-white px-4 py-4">
-      <div className="max-w-3xl mx-auto">
+    <div className="border-t bg-background px-6 py-4">
+      <div className="max-w-6xl mx-auto">
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onToggleWebSearch}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                webSearchEnabled
-                  ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <Globe className="w-4 h-4" />
-              Web Search {webSearchEnabled ? 'On' : 'Off'}
-            </button>
-
-            <div className="text-xs text-gray-500">
-              {input.length > 0 && `${input.length} characters`}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="web-search" className="flex items-center gap-2 cursor-pointer">
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm">Web Search</span>
+              </Label>
+              <Switch
+                id="web-search"
+                checked={webSearchEnabled}
+                onCheckedChange={onToggleWebSearch}
+              />
             </div>
+
+            {input.length > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {input.length} characters
+              </Badge>
+            )}
           </div>
 
-          <div className="flex gap-3">
-            <textarea
+          <div className="flex gap-2">
+            <Textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type your message..."
               disabled={isGenerating || isSending}
-              className="flex-1 resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-50 disabled:text-gray-500"
+              className="flex-1 resize-none min-h-[52px] max-h-[200px]"
               rows={1}
             />
 
             {isGenerating && onCancelGeneration ? (
-              <button
-                type="button"
-                onClick={onCancelGeneration}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-              >
-                <X className="w-5 h-5" />
-                Cancel
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    onClick={onCancelGeneration}
+                    variant="destructive"
+                    size="icon"
+                    className="h-[52px] w-[52px]"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Cancel generation</TooltipContent>
+              </Tooltip>
             ) : (
-              <button
-                type="submit"
-                disabled={!input.trim() || isGenerating || isSending}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-              >
-                {isGenerating || isSending ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Send className="w-5 h-5" />
-                )}
-                {isGenerating ? 'Generating...' : 'Send'}
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="submit"
+                    disabled={!input.trim() || isGenerating || isSending}
+                    size="icon"
+                    className="h-[52px] w-[52px]"
+                  >
+                    {isGenerating || isSending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isGenerating ? 'Generating...' : 'Send message (Enter)'}
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
 
-          <div className="text-xs text-gray-500">Press Enter to send, Shift+Enter for new line</div>
+          <div className="text-xs text-muted-foreground text-center">
+            Press Enter to send, Shift+Enter for new line
+          </div>
         </form>
       </div>
     </div>

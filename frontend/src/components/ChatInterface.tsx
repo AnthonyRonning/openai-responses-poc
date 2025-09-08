@@ -1,6 +1,12 @@
 import { useCallback } from 'react';
 
-import { MessageSquare, Plus, Settings, Trash2 } from 'lucide-react';
+import { Bot, MessageSquare, Plus, Search, Settings, Trash2 } from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 import { useConversation } from '../hooks/useConversation';
 import { useSettings } from '../hooks/useSettings';
@@ -63,109 +69,138 @@ export function ChatInterface({ onOpenSettings }: ChatInterfaceProps) {
   );
 
   return (
-    <div className="flex h-screen">
-      <aside className="w-64 bg-gray-900 text-white flex flex-col">
-        <div className="p-4 border-b border-gray-800">
-          <button
-            onClick={handleNewConversation}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            New Conversation
-          </button>
-        </div>
+    <TooltipProvider>
+      <div className="flex h-screen bg-background">
+        {/* Sidebar */}
+        <aside className="w-64 border-r bg-muted/10 flex flex-col">
+          <div className="p-3 border-b">
+            <Button
+              onClick={handleNewConversation}
+              className="w-full justify-start gap-2"
+              variant="default"
+            >
+              <Plus className="h-4 w-4" />
+              New Conversation
+            </Button>
+          </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="space-y-2">
-            {conversations.map((conv) => (
-              <div
-                key={conv.id}
-                className={`group relative p-3 rounded-lg cursor-pointer transition-colors ${
-                  activeConversation === conv.id ? 'bg-gray-800' : 'hover:bg-gray-800'
-                }`}
-                onClick={() => switchConversation(conv.id)}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {conv.title || `Conversation ${conv.id.slice(0, 8)}`}
-                    </p>
-                    <p className="text-xs text-gray-400">{conv.messageCount} messages</p>
+          <ScrollArea className="flex-1">
+            <div className="p-3 space-y-1">
+              {conversations.map((conv) => (
+                <div
+                  key={conv.id}
+                  className={cn(
+                    'group relative p-3 rounded-lg cursor-pointer transition-all',
+                    'hover:bg-accent hover:text-accent-foreground',
+                    activeConversation === conv.id && 'bg-accent text-accent-foreground',
+                  )}
+                  onClick={() => switchConversation(conv.id)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {conv.title || `Conversation ${conv.id.slice(0, 8)}`}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground">
+                          {conv.messageCount} messages
+                        </span>
+                        {conv.status === 'generating' && (
+                          <Badge variant="secondary" className="h-4 text-xs px-1">
+                            Generating
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteConversation(conv.id);
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Delete conversation</TooltipContent>
+                    </Tooltip>
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteConversation(conv.id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-700 rounded transition-opacity"
-                  >
-                    <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-400" />
-                  </button>
                 </div>
-                {conv.status === 'generating' && (
-                  <div className="mt-1 flex gap-1">
-                    <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                    <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse delay-75" />
-                    <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse delay-150" />
-                  </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </aside>
+
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
+          {/* Header */}
+          <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="flex h-14 items-center px-4 gap-4">
+              <div className="flex items-center gap-2 flex-1">
+                <Bot className="h-5 w-5 text-primary" />
+                <h1 className="text-lg font-semibold">OpenAI Responses & Conversations</h1>
+                {settings.tools.webSearch && (
+                  <Badge variant="secondary" className="gap-1">
+                    <Search className="h-3 w-3" />
+                    Web Search
+                  </Badge>
                 )}
               </div>
-            ))}
-          </div>
+              <div className="flex items-center gap-2">
+                {settings.api.apiKey && (
+                  <Badge variant="outline" className="text-xs">
+                    {settings.api.model}
+                  </Badge>
+                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" onClick={onOpenSettings}>
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Settings</TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+          </header>
+
+          {!settings.api.apiKey ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center max-w-md space-y-4">
+                <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                  <MessageSquare className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-xl font-semibold">Configure API Key</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Please configure your OpenAI API key in settings to start chatting.
+                  </p>
+                </div>
+                <Button onClick={onOpenSettings}>Open Settings</Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <MessageList
+                messages={currentSession?.messages || []}
+                isGenerating={isGenerating}
+                onDeleteMessage={deleteMessage}
+              />
+              <InputArea
+                onSendMessage={handleSendMessage}
+                isGenerating={isGenerating}
+                webSearchEnabled={settings.tools.webSearch}
+                onToggleWebSearch={handleToggleWebSearch}
+                onCancelGeneration={cancelGeneration}
+              />
+            </>
+          )}
         </div>
-      </aside>
-
-      <div className="flex-1 flex flex-col">
-        <header className="bg-white border-b px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="w-6 h-6 text-green-600" />
-              <h1 className="text-xl font-semibold text-gray-900">
-                OpenAI Responses & Conversations Demo
-              </h1>
-            </div>
-            <button
-              onClick={onOpenSettings}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <Settings className="w-5 h-5 text-gray-600" />
-            </button>
-          </div>
-        </header>
-
-        {!settings.api.apiKey ? (
-          <div className="flex-1 flex items-center justify-center bg-gray-50">
-            <div className="text-center max-w-md">
-              <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">API Key Required</h2>
-              <p className="text-gray-600 mb-4">
-                Please configure your OpenAI API key in settings to start chatting.
-              </p>
-              <button
-                onClick={onOpenSettings}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                Open Settings
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <MessageList
-              messages={currentSession?.messages || []}
-              isGenerating={isGenerating}
-              onDeleteMessage={deleteMessage}
-            />
-            <InputArea
-              onSendMessage={handleSendMessage}
-              isGenerating={isGenerating}
-              webSearchEnabled={settings.tools.webSearch}
-              onToggleWebSearch={handleToggleWebSearch}
-              onCancelGeneration={cancelGeneration}
-            />
-          </>
-        )}
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
