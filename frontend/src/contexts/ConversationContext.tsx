@@ -4,7 +4,14 @@ import type { ReactNode } from 'react';
 import { useSettings } from '../hooks/useSettings';
 import { OpenAIClient } from '../lib/openai-client';
 import { StreamManager } from '../lib/streaming';
-import type { ActiveSession, Conversation, LogEntry, Message } from '../types';
+import type {
+  ActiveSession,
+  Conversation,
+  ConversationItem,
+  LogEntry,
+  Message,
+  WebSearchCall,
+} from '../types';
 import { ConversationContext } from './conversation-context';
 
 export function ConversationProvider({ children }: { children: ReactNode }) {
@@ -47,13 +54,39 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
 
   const loadConversationItems = useCallback(
     async (id: string, after?: string) => {
-      if (!client) return { messages: [], lastId: undefined };
+      if (!client) return { messages: [], items: [], lastId: undefined };
 
       try {
         const result = await client.getConversationItems(id, after);
-        const messages: Message[] = result.items
-          .filter((item) => item.type === 'message' && item.role && item.content)
-          .map((item) => {
+        const messages: Message[] = [];
+        const items: ConversationItem[] = [];
+        let lastWebSearch: WebSearchCall | null = null;
+
+        result.items.forEach((item) => {
+          if (item.type === 'web_search_call') {
+            // Handle web search item
+            const webSearchCall: WebSearchCall = {
+              id: item.id,
+              status: (item.status as 'in_progress' | 'searching' | 'completed') || 'completed',
+              action: item.action
+                ? {
+                    type: (item.action.type as 'search' | 'open_page' | 'find_in_page') || 'search',
+                    query: item.action.query,
+                    url: item.action.url,
+                  }
+                : undefined,
+            };
+
+            // Store as a standalone item
+            items.push({
+              id: item.id,
+              type: 'web_search_call',
+              webSearchCall,
+            });
+
+            // Keep track of the last web search to attach to the next assistant message
+            lastWebSearch = webSearchCall;
+          } else if (item.type === 'message' && item.role && item.content) {
             // Extract text from content array
             let text = '';
             if (Array.isArray(item.content)) {
@@ -66,19 +99,31 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
               text = item.content;
             }
 
-            return {
+            const message: Message = {
               id: item.id,
               role: item.role as 'user' | 'assistant' | 'system',
               content: text,
               timestamp: 0, // API doesn't provide timestamps for loaded messages
               status: 'complete' as const,
+              // Attach web search to assistant message if it's the next message after a web search
+              webSearchCalls:
+                item.role === 'assistant' && lastWebSearch ? [lastWebSearch] : undefined,
             };
-          }); // API now returns in ascending order (oldest first)
 
-        return { messages, lastId: result.lastId };
+            messages.push(message);
+            items.push(message);
+
+            // Clear last web search after attaching to assistant message
+            if (item.role === 'assistant' && lastWebSearch) {
+              lastWebSearch = null;
+            }
+          }
+        }); // API now returns in ascending order (oldest first)
+
+        return { messages, items, lastId: result.lastId };
       } catch (error) {
         console.error('Failed to load conversation items:', error);
-        return { messages: [], lastId: undefined };
+        return { messages: [], items: [], lastId: undefined };
       }
     },
     [client],
@@ -92,7 +137,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
 
       try {
         const conversation = await client.getConversation(id);
-        const { messages, lastId } = await loadConversationItems(id);
+        const { messages, items, lastId } = await loadConversationItems(id);
 
         const conv: Conversation = {
           id: conversation.id,
@@ -117,6 +162,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
         setCurrentSession({
           conversationId: id,
           messages,
+          items,
         });
 
         // Update URL with conversation ID
@@ -243,6 +289,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
           setCurrentSession({
             conversationId: conversation.id,
             messages: [],
+            items: [],
           });
 
           // Update URL with conversation ID
@@ -274,11 +321,13 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
           return {
             conversationId: conversationId!,
             messages: [userMessage],
+            items: [userMessage],
           };
         }
         return {
           ...prev,
           messages: [...prev.messages, userMessage],
+          items: [...prev.items, userMessage],
         };
       });
 
@@ -329,6 +378,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
             return {
               ...prev,
               messages: [...prev.messages, assistantMessage],
+              items: [...prev.items, assistantMessage],
             };
           });
 
@@ -386,9 +436,143 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
               setIsGenerating(false);
             },
             (chunk) => {
-              // Extract server item ID from the stream
-              if (chunk.item_id && !serverItemId) {
+              // Handle message output item added (this happens after web search if there was one)
+              if (chunk.type === 'response.output_item.added' && chunk.item?.type === 'message') {
+                // Update the server item ID for the assistant message
+                if (chunk.item_id) {
+                  serverItemId = chunk.item_id;
+                }
+                // Set the message back to streaming status after web search completes
+                setCurrentSession((prev) => {
+                  if (!prev) return prev;
+                  const messages = prev.messages.map((msg, idx) => {
+                    if (idx === prev.messages.length - 1 && msg.role === 'assistant') {
+                      return { ...msg, status: 'streaming' as const };
+                    }
+                    return msg;
+                  });
+                  return { ...prev, messages };
+                });
+              }
+
+              // Extract server item ID from the stream (for non-web-search cases)
+              if (
+                chunk.item_id &&
+                !serverItemId &&
+                chunk.type !== 'response.web_search_call.searching' &&
+                chunk.type !== 'response.web_search_call.completed'
+              ) {
                 serverItemId = chunk.item_id;
+              }
+
+              // Handle web search events
+              if (
+                chunk.type === 'response.output_item.added' &&
+                chunk.item?.type === 'web_search_call'
+              ) {
+                setCurrentSession((prev) => {
+                  if (!prev) return prev;
+                  const messages = prev.messages.map((msg, idx) => {
+                    if (idx === prev.messages.length - 1 && msg.role === 'assistant') {
+                      const webSearchCall = {
+                        id: chunk.item?.id || '',
+                        status: 'in_progress' as const,
+                        action: chunk.item?.action
+                          ? {
+                              type:
+                                (chunk.item.action.type as
+                                  | 'search'
+                                  | 'open_page'
+                                  | 'find_in_page') || 'search',
+                              query: chunk.item.action.query,
+                              url: chunk.item.action.url,
+                            }
+                          : undefined,
+                      };
+                      return {
+                        ...msg,
+                        status: 'searching' as const,
+                        webSearchCalls: [...(msg.webSearchCalls || []), webSearchCall],
+                      };
+                    }
+                    return msg;
+                  });
+                  return { ...prev, messages };
+                });
+              }
+
+              // Handle web search progress events
+              if (chunk.type === 'response.web_search_call.searching' && chunk.item_id) {
+                setCurrentSession((prev) => {
+                  if (!prev) return prev;
+                  const messages = prev.messages.map((msg, idx) => {
+                    if (idx === prev.messages.length - 1 && msg.role === 'assistant') {
+                      const webSearchCalls = (msg.webSearchCalls || []).map((call) =>
+                        call.id === chunk.item_id
+                          ? { ...call, status: 'searching' as const }
+                          : call,
+                      );
+                      return { ...msg, webSearchCalls };
+                    }
+                    return msg;
+                  });
+                  return { ...prev, messages };
+                });
+              }
+
+              // Handle web search completion
+              if (chunk.type === 'response.web_search_call.completed' && chunk.item_id) {
+                setCurrentSession((prev) => {
+                  if (!prev) return prev;
+                  const messages = prev.messages.map((msg, idx) => {
+                    if (idx === prev.messages.length - 1 && msg.role === 'assistant') {
+                      const webSearchCalls = (msg.webSearchCalls || []).map((call) =>
+                        call.id === chunk.item_id
+                          ? { ...call, status: 'completed' as const }
+                          : call,
+                      );
+                      return { ...msg, webSearchCalls };
+                    }
+                    return msg;
+                  });
+                  return { ...prev, messages };
+                });
+              }
+
+              // Handle web search output item done - contains the search query
+              if (
+                chunk.type === 'response.output_item.done' &&
+                chunk.item?.type === 'web_search_call'
+              ) {
+                setCurrentSession((prev) => {
+                  if (!prev) return prev;
+                  const messages = prev.messages.map((msg, idx) => {
+                    if (idx === prev.messages.length - 1 && msg.role === 'assistant') {
+                      const webSearchCalls = (msg.webSearchCalls || []).map((call) =>
+                        call.id === chunk.item?.id
+                          ? {
+                              ...call,
+                              action: chunk.item?.action
+                                ? {
+                                    type:
+                                      (chunk.item.action.type as
+                                        | 'search'
+                                        | 'open_page'
+                                        | 'find_in_page') || 'search',
+                                    query: chunk.item.action.query,
+                                    url: chunk.item.action.url,
+                                  }
+                                : undefined,
+                              status: 'completed' as const,
+                            }
+                          : call,
+                      );
+                      return { ...msg, webSearchCalls, status: 'streaming' as const };
+                    }
+                    return msg;
+                  });
+                  return { ...prev, messages };
+                });
               }
             },
           );
@@ -411,6 +595,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
             return {
               ...prev,
               messages: [...prev.messages, assistantMessage],
+              items: [...prev.items, assistantMessage],
             };
           });
 
@@ -520,12 +705,13 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
     if (!client || !activeConversation) return;
 
     try {
-      const { messages: newMessages, lastId } = await loadConversationItems(
-        activeConversation,
-        lastSeenItemId,
-      );
+      const {
+        messages: newMessages,
+        items: newItems,
+        lastId,
+      } = await loadConversationItems(activeConversation, lastSeenItemId);
 
-      if (newMessages.length > 0) {
+      if (newMessages.length > 0 || newItems.length > 0) {
         // Add new messages to the current session
         setCurrentSession((prev) => {
           if (!prev) return prev;
@@ -572,6 +758,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
           return {
             ...prev,
             messages: [...updatedMessages, ...uniqueNewMessages],
+            items: [...prev.items, ...newItems], // Add new items including web search items
           };
         });
 

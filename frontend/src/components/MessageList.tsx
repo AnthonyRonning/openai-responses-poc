@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Bot, Clock, Trash2, User } from 'lucide-react';
 
 import type { Message } from '../types';
+import { WebSearchIndicator } from './WebSearchIndicator';
 
 interface MessageListProps {
   messages: Message[];
@@ -52,29 +53,34 @@ export function MessageList({ messages, isGenerating, onDeleteMessage }: Message
             )}
 
             <div className="relative">
-              <div
-                className={`max-w-[70%] ${
-                  message.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'
-                } rounded-lg px-4 py-3`}
-              >
-                <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
-                {message.status === 'streaming' && (
-                  <div className="mt-2 flex items-center gap-1">
-                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" />
-                    <div className="w-2 h-2 bg-current rounded-full animate-bounce delay-75" />
-                    <div className="w-2 h-2 bg-current rounded-full animate-bounce delay-150" />
-                  </div>
+              <div className="flex flex-col gap-2">
+                {message.webSearchCalls && message.webSearchCalls.length > 0 && (
+                  <WebSearchIndicator searches={message.webSearchCalls} />
                 )}
-                {message.timestamp > 0 && (
-                  <div
-                    className={`mt-2 text-xs flex items-center gap-1 ${
-                      message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
-                    }`}
-                  >
-                    <Clock className="w-3 h-3" />
-                    {formatTime(message.timestamp)}
-                  </div>
-                )}
+                <div
+                  className={`max-w-[70%] ${
+                    message.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'
+                  } rounded-lg px-4 py-3`}
+                >
+                  <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
+                  {message.status === 'streaming' && (
+                    <div className="mt-2 flex items-center gap-1">
+                      <div className="w-2 h-2 bg-current rounded-full animate-bounce" />
+                      <div className="w-2 h-2 bg-current rounded-full animate-bounce delay-75" />
+                      <div className="w-2 h-2 bg-current rounded-full animate-bounce delay-150" />
+                    </div>
+                  )}
+                  {message.timestamp > 0 && (
+                    <div
+                      className={`mt-2 text-xs flex items-center gap-1 ${
+                        message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
+                      }`}
+                    >
+                      <Clock className="w-3 h-3" />
+                      {formatTime(message.timestamp)}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {onDeleteMessage &&

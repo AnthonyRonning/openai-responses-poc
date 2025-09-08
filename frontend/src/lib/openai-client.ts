@@ -25,11 +25,16 @@ export interface ResponseCreateParams {
 
 export interface ConversationItem {
   id: string;
-  type: 'message' | 'tool_call' | 'tool_output';
+  type: 'message' | 'tool_call' | 'tool_output' | 'web_search_call';
   role?: string;
   content?: string | Array<{ type: string; text?: string; [key: string]: unknown }>;
   created_at: number;
   status?: string;
+  action?: {
+    type?: string;
+    query?: string;
+    url?: string;
+  };
 }
 
 export class OpenAIClient {

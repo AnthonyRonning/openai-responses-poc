@@ -12,6 +12,17 @@ export interface StreamChunk {
     status?: string;
     [key: string]: unknown;
   };
+  // Web search specific fields
+  item?: {
+    id?: string;
+    type?: string;
+    status?: string;
+    action?: {
+      type?: string;
+      query?: string;
+      url?: string;
+    };
+  };
 }
 
 export class SSEParser {
@@ -116,7 +127,11 @@ export class StreamManager {
         }
 
         // Check for Responses API completion
-        if (chunk.type === 'response.completed' || chunk.type === 'response.output_item.done') {
+        // Only complete on response.completed or when a message item is done (not web search)
+        if (
+          chunk.type === 'response.completed' ||
+          (chunk.type === 'response.output_item.done' && chunk.item?.type === 'message')
+        ) {
           onComplete?.();
           break;
         }
