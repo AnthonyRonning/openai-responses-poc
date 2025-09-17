@@ -349,6 +349,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
           conversation: conversationId,
           input: [{ role: 'user', content }],
           stream: settings.streaming.enabled,
+          background: true,
           store: true,
           tools: settings.tools.webSearch ? [{ type: 'web_search' }] : undefined,
           signal: abortControllerRef.current.signal,
